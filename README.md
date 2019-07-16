@@ -1,2 +1,3 @@
 # large-arithmetic-collider
-Skeleton code for the Large Arithmetic Collider coursework.
+
+This repository contains the skeleton code for the Large Arithmetic Collider coursework.

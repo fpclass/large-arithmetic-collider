@@ -1,0 +1,18 @@
+[
+    { "title": "Rows (simple)"
+    , "description": "Grids consisting of a single row each, with up to 100 cells."
+    , "path": "0-simple-rows"
+    },
+    { "title": "Grids (simple)"
+    , "description": "Grids consisting of up to size 10x10, no rotations."
+    , "path": "1-simple-grids"
+    },
+    { "title": "Rows (advanced)"
+    , "description": "Grids consisting of a single row each, with up to 20 cells and 3 rotations."
+    , "path": "2-adv-rows"
+    },
+    { "title": "Grids (advanced)"
+    , "description": "Grids consisting of up to size 4x4, up to 3 rotations."
+    , "path": "3-adv-grids"
+    }
+]

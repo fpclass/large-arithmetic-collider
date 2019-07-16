@@ -1,0 +1,60 @@
+name:                large-arithmetic-collider
+version:             0.1.0.0
+github:              "fpclass/large-arithmetic-collider"
+license:             MIT
+author:              "Michael B. Gale"
+maintainer:          "m.gale@warwick.ac.uk"
+copyright:           "2019 Michael B. Gale"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/fpclass/large-arithmetic-collider#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- random
+- directory
+- filepath
+- aeson
+- unordered-containers
+
+library:
+  source-dirs: src
+
+executables:
+  collider:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -O2
+    dependencies:
+    - large-arithmetic-collider
+    - clock
+
+tests:
+  large-arithmetic-collider-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -O2
+    dependencies:
+    - large-arithmetic-collider
+    - hspec
+    - QuickCheck

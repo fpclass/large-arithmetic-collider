@@ -1,0 +1,1 @@
+{"par":0,"grid":{"rows":[{"cells":[{"action":"add","operand":66},{"action":"add","operand":22},{"action":"sub","operand":90},{"action":"sub","operand":26}],"target":88},{"cells":[{"action":"sub","operand":95},{"action":"add","operand":62},{"action":"add","operand":26},{"action":"add","operand":49}],"target":26}],"columns":[66,22,26,0]}}
