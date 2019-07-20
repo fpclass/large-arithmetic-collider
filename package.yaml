@@ -56,5 +56,8 @@ tests:
     - -O2
     dependencies:
     - large-arithmetic-collider
-    - hspec
+    - tasty
+    - tasty-hunit
+    - tasty-quickcheck
+    - tasty-ant-xml
     - QuickCheck

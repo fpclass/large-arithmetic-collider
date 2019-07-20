@@ -6,11 +6,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-import Test.Hspec
-import Test.Hspec.QuickCheck
-import Test.QuickCheck
-
 import Data.List (nub)
+
+import Test.Tasty
+import Test.Tasty.Ingredients
+import Test.Tasty.Ingredients.Basic
+import Test.Tasty.QuickCheck as QC
+import Test.Tasty.HUnit
+import Test.Tasty.Runners.AntXML
 
 import Game as G
 import Level
@@ -75,23 +78,20 @@ instance Arbitrary Grid where
 
 --------------------------------------------------------------------------------
 
--- | `loadGrids` @fp continuation@ loads grids from the directory pointed at
--- by @fp@ and then passes the results to the @continuation@.
-loadGrids :: FilePath -> ([Grid] -> IO ()) -> IO ()
-loadGrids fp cont = do 
+-- | `loadGrids` @fp@ loads grids from the directory pointed at by @fp@.
+loadGrids :: FilePath -> IO [Grid]
+loadGrids fp = do 
     r <- loadLevels fp
     case r of 
         Left err -> fail err 
-        Right ls -> cont (map levelGrid ls)
+        Right ls -> pure (map levelGrid ls)
 
--- | `loadSmplGrids` @continuation@ loads simple grids from disk and then 
--- passes the results to the @continuation@.
-loadSmplGrids :: ([Grid] -> IO ()) -> IO ()
+-- | `loadSmplGrids` loads simple grids from disk.
+loadSmplGrids :: IO [Grid]
 loadSmplGrids = loadGrids "levels/1-simple-grids"
 
--- | `loadAdvGrids` @continuation@ loads advanced grids from disk and then 
--- passes the results to the @continuation@.
-loadAdvGrids :: ([Grid] -> IO ()) -> IO ()
+-- | `loadAdvGrids` loads advanced grids from disk.
+loadAdvGrids :: IO [Grid]
 loadAdvGrids = loadGrids "levels/3-adv-grids"
 
 --------------------------------------------------------------------------------
@@ -113,26 +113,42 @@ structureEq (Grid cts rs) (Grid cts' rs') =
             t==t' && all (uncurry testCell) (zip cs cs')
           testCell (Cell _ a) (Cell _ a') = a==a'
 
--- | `main` is the main entry point to the test suite.
-main :: IO ()
-main = hspec $ do 
-    describe "eval" $ do 
-        prop "Add adds the number to the accumulator" $
+--------------------------------------------------------------------------------
+
+tests :: TestTree
+tests = testGroup "Game" 
+    [
+        evalTests
+    ,   resultTests
+    ,   solveRowTests
+    ,   solveTests
+    ,   rotationsTests
+    ,   stepsTests
+    ]
+
+evalTests :: TestTree 
+evalTests = testGroup "eval" 
+    [
+        QC.testProperty "Add adds the number to the accumulator" $
             \(Positive n) acc -> G.eval (Add n) acc === n+acc 
-        prop "Sub subtracts the number from the accumulator" $ 
+    ,   QC.testProperty "Sub subtracts the number from the accumulator" $ 
             \(Positive n) acc -> G.eval (Sub n) acc === acc-n
-    describe "result" $ do 
-        it "returns 0 for the empty list" $ 
-            G.result [] `shouldBe` 0
-        prop "returns 0 if all cells are disabled" $
+    ]
+
+resultTests :: TestTree 
+resultTests = testGroup "result"
+    [
+        testCase "returns 0 for the empty list" $ 
+            G.result [] @?= 0
+    ,   QC.testProperty "returns 0 if all cells are disabled" $
             \(xs :: [DisCell]) -> G.result (map unDisCell xs) === 0
-        prop "returns the sum if all cells are add cells" $ 
+    ,   QC.testProperty "returns the sum if all cells are add cells" $ 
             \(xs :: [AddCell]) -> G.result (map unAddCell xs) === 
                                   sum (map getOperand xs)
-        prop "returns the sum*(-1) if all cells are sub cells" $ 
+    ,   QC.testProperty "returns the sum*(-1) if all cells are sub cells" $ 
             \(xs :: [SubCell]) -> G.result (map unSubCell xs) === 
                                   (-1) * sum (map getOperand xs)
-        prop "works correctly with a mix of cell types" $
+    ,   QC.testProperty "works correctly with a mix of cell types" $
             \(xs :: [DisCell]) (ys :: [AddCell]) (zs :: [SubCell]) ->
                 let as = map unDisCell xs
                     bs = map unAddCell ys 
@@ -140,35 +156,74 @@ main = hspec $ do
                     x  = sum (map getOperand ys)
                     y  = (-1) * sum (map getOperand zs)
                 in G.result (as ++ bs ++ cs ++ bs ++ as) === x + y + x
-    describe "solveRow" $ 
-        -- modify the max size so we don't generate rows that are too large
-        modifyMaxSize (const 25) $ do 
-            prop "finds at least one solution for rows that have a solution" $ 
-                \row -> G.solveRow row =/= []
-            prop "all results have the same target and number of cells as the input" $
-                \row@(Row t cs) -> all (\(Row t' cs') -> t==t' && length cs == length cs') (G.solveRow row)
-            prop "all results evaluate to to the target (via result)" $
-                \row@(Row t _) -> all (\(Row _ cs) -> result cs == t) (G.solveRow row)
-    around loadSmplGrids $ 
-        describe "solve" $ do 
-            it "returned grids are structurally the same as the inputs" $ \grids -> 
-                zip grids (map G.solve grids) `shouldSatisfy` 
-                all (\(g,sols) -> all (structureEq g) sols)
-            it "returned grids whose rows result in their targets (via result)" $ \grids -> 
-                map G.solve grids `shouldSatisfy` 
-                all (\sols -> all (\(Grid _ rs) -> all (\(Row t cs) -> t==result cs) rs) sols)
-            it "can solve all of the examples" $ \grids ->
-                grids `shouldSatisfy` all (not . null . G.solve)
-    describe "rotations" $ do 
-        around loadAdvGrids $ it "returns rows+columns many grids (for grids 2x2 and up)" $ \grids ->
-            grids `shouldSatisfy` all (\g -> length (G.rotations g) == columnCount g + rowCount g) 
-    around loadAdvGrids $ do
-        describe "steps" $ do
-            it "is never empty for grids that can be solved" $ \grids ->
-                map G.steps grids `shouldSatisfy` all (not . null) 
-            it "does not contain the same grid more than once" $ \grids -> 
-                map G.steps grids `shouldSatisfy` all (\xs -> length xs == length (nub xs))  
-            it "the last grid has at least one solution" $ \grids ->
-                grids `shouldSatisfy` all (not . null) . map (G.solve . last . G.steps)
+    ]
+
+solveRowTests :: TestTree 
+solveRowTests = localOption (QuickCheckMaxSize 25) $ testGroup "solveRow" 
+    [
+        QC.testProperty "finds at least one solution for rows that have a solution" $ 
+            \row -> G.solveRow row =/= []
+    ,   QC.testProperty "all results have the same target and number of cells as the input" $
+            \row@(Row t cs) -> all (\(Row t' cs') -> t==t' && length cs == length cs') (G.solveRow row)
+    ,   QC.testProperty "all results evaluate to to the target (via result)" $
+            \row@(Row t _) -> all (\(Row _ cs) -> result cs == t) (G.solveRow row)
+    ]
+
+solveTests :: TestTree 
+solveTests = withResource loadSmplGrids (const $ pure ()) $ 
+    \getGrids -> testGroup "solve"
+        [
+            testCase "returned grids are structurally the same as the inputs" $ 
+                getGrids >>= \grids ->
+                all (\(g,sols) -> all (structureEq g) sols) (zip grids (map G.solve grids))
+                @?= True
+        ,   testCase "returned grids whose rows result in their targets (via result)" $ 
+                getGrids >>= \grids -> 
+                all (\sols -> all (\(Grid _ rs) -> all (\(Row t cs) -> t==result cs) rs) sols) (map G.solve grids)
+                @?= True
+        ,   testCase "can solve all of the examples" $ 
+                getGrids >>= \grids ->
+                all (not . null . G.solve) grids 
+                @?= True
+        ]
+
+rotationsTests :: TestTree 
+rotationsTests = withResource loadAdvGrids (const $ pure ()) $ 
+    \getGrids -> testGroup "rotations"
+        [
+            testCase "returns rows+columns many grids (for grids 2x2 and up)" $
+                getGrids >>= \grids -> 
+                all (\g -> length (G.rotations g) == columnCount g + rowCount g) grids 
+                @?= True
+        ]
+
+stepsTests :: TestTree 
+stepsTests = withResource loadAdvGrids (const $ pure ()) $ 
+    \getGrids -> testGroup "steps"
+        [
+            testCase "is never empty for grids that can be solved" $ 
+                getGrids >>= \grids ->
+                all (not . null) (map G.steps grids)
+                @?= True
+        ,   testCase "does not contain the same grid more than once" $ 
+                getGrids >>= \grids -> 
+                all (\xs -> length xs == length (nub xs)) (map G.steps grids)
+                @?= True  
+        ,   testCase "the last grid has at least one solution" $ 
+                getGrids >>= \grids ->
+                (all (not . null) . map (G.solve . last . G.steps)) grids 
+                @?= True
+        ]
+
+--------------------------------------------------------------------------------
+
+-- | The list of tasty ingredients. Note: the order seems to matter, 
+-- anyXMLRunner won't work at all if placed last in the list.
+ingredients :: [Ingredient]
+ingredients = [antXMLRunner, listingTests, consoleTestReporter]
+
+-- | The main entry point to the test suite.
+main :: IO ()
+main = defaultMainWithIngredients ingredients tests
 
 --------------------------------------------------------------------------------
