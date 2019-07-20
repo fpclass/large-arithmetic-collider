@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 40b49748f7b3238bf8d0dcbffb67200dddd7350b750b734d03d9babcff95aae1
+-- hash: d9619db88b932517d6575ace8d6fc7c4bb89f124af6e83e970e06de2d61b48f7
 
 name:           large-arithmetic-collider
 version:        0.1.0.0
@@ -75,8 +75,11 @@ test-suite large-arithmetic-collider-test
     , base >=4.7 && <5
     , directory
     , filepath
-    , hspec
     , large-arithmetic-collider
     , random
+    , tasty
+    , tasty-ant-xml
+    , tasty-hunit
+    , tasty-quickcheck
     , unordered-containers
   default-language: Haskell2010
