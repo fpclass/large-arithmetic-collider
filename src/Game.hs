@@ -50,7 +50,9 @@ solveRow = undefined
 solve :: Grid -> [Grid]
 solve = undefined
 
--- | `rotations` @grid@ returns a list of 
+-- | `rotations` @grid@ returns a list of grids containing all possible ways 
+-- to rotate @grid@. This means the resulting list should normally have 
+-- rows + columns many elements.
 rotations :: Grid -> [Grid]
 rotations = undefined
 
