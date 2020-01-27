@@ -71,10 +71,7 @@ instance Arbitrary DisCell where
 instance Arbitrary Row where 
     arbitrary = do 
         cells <- arbitrary 
-        pure $ Row (G.result cells) cells
-
-instance Arbitrary Grid where 
-    arbitrary = Grid <$> undefined <*> arbitrary
+        pure $ Row (G.result cells) [Cell False op | Cell _ op <- cells]
 
 --------------------------------------------------------------------------------
 
@@ -166,7 +163,7 @@ solveRowTests = localOption (QuickCheckMaxSize 25) $ testGroup "solveRow"
     ,   QC.testProperty "all results have the same target and number of cells as the input" $
             \row@(Row t cs) -> all (\(Row t' cs') -> t==t' && length cs == length cs') (G.solveRow row)
     ,   QC.testProperty "all results evaluate to to the target (via result)" $
-            \row@(Row t _) -> all (\(Row _ cs) -> result cs == t) (G.solveRow row)
+            \row@(Row t _) -> all (\(Row _ cs) -> G.result cs == t) (G.solveRow row)
     ]
 
 solveTests :: TestTree 
