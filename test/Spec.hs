@@ -3,10 +3,10 @@
 -- Coursework 1: Large Arithmetic Collider                                    --
 --------------------------------------------------------------------------------
 
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-import Data.List (nub)
+import Data.List (nub, transpose)
 
 import Test.Tasty
 import Test.Tasty.Ingredients
@@ -170,7 +170,9 @@ resultTests = testGroup "result"
 solveRowTests :: TestTree 
 solveRowTests = localOption (QuickCheckMaxSize 25) $ testGroup "solveRow" 
     [
-        QC.testProperty "finds at least one solution for rows that have a solution" $ 
+        testCase "finds a solution for Row 0 []" $ 
+            G.solveRow (Row 0 []) @?= [Row 0 []]
+    ,   QC.testProperty "finds at least one result for rows that have a solution" $ 
             \row -> G.solveRow row =/= []
     ,   QC.testProperty "all results have the same target and number of cells as the input" $
             \row@(Row t cs) -> all (\(Row t' cs') -> t==t' && length cs == length cs') (G.solveRow row)
@@ -179,50 +181,61 @@ solveRowTests = localOption (QuickCheckMaxSize 25) $ testGroup "solveRow"
     ]
 
 solveTests :: TestTree 
-solveTests = withResource loadSmplGrids (const $ pure ()) $ 
-    \getGrids -> testGroup "solve"
+solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map G.solve grids)) (const $ pure ()) $ 
+    \getResults -> testGroup "solve" 
         [
-            testCase "returned grids are structurally the same as the inputs" $ 
-                getGrids >>= \grids ->
-                all (\(g,sols) -> all (structureEq g) sols) (zip grids (map G.solve grids))
-                @?= True
+            testCase "returned grids are structurally the same as the inputs (same dimensions and cells)" $
+                getResults >>= \results -> mapM_ (\(g,sols) -> mapM_ (\s -> 
+                    structureEq g s @?= True) sols
+                ) results 
         ,   testCase "returned grids whose rows result in their targets (via result)" $ 
-                getGrids >>= \grids -> 
-                all (\sols -> all (\(Grid _ rs) -> all (\(Row t cs) -> t==result cs) rs) sols) (map G.solve grids)
-                @?= True
-        ,   testCase "can solve all of the examples" $ 
-                getGrids >>= \grids ->
-                all (not . null . G.solve) grids 
-                @?= True
+                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(Grid _ rs) -> 
+                    mapM_ (\(Row t cs) -> t @?= result cs) rs) sols
+                ) (map snd results)
+        ,   testCase "returned grids whose columns result in their targets (via result)" $
+                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(Grid cs rs) -> 
+                    mapM_ (\(t,col) -> t @?= result col) $ 
+                        zip cs $ transpose (map (\(Row _ cells) -> cells) rs)) sols
+                ) (map snd results)
+        ,   testCase "finds results for all of the examples" $
+                getResults >>= \results -> mapM_ (\sols -> 
+                    assertBool "solve found no results" 
+                        (not $ null sols)
+                 ) (map snd results) 
         ]
 
 rotationsTests :: TestTree 
 rotationsTests = withResource loadAdvGrids (const $ pure ()) $ 
     \getGrids -> testGroup "rotations"
         [
-            testCase "returns rows+columns many grids (for grids 2x2 and up)" $
-                getGrids >>= \grids -> 
-                all (\g -> length (G.rotations g) == columnCount g + rowCount g) grids 
-                @?= True
+            testCase "returns rows+columns many grids (for grids 2x2 and up)" $ 
+                getGrids >>= \grids -> mapM_ (\(g,rs) -> 
+                    length rs @?= columnCount g + rowCount g
+                ) (zip grids (map G.rotations grids))
         ]
-
+         
 stepsTests :: TestTree 
-stepsTests = withResource loadAdvGrids (const $ pure ()) $ 
-    \getGrids -> testGroup "steps"
+stepsTests = 
+    withResource 
+        (loadAdvGrids >>= \grids -> pure $ map G.steps grids) 
+        (const $ pure ()) $ 
+    \getResults -> testGroup "steps" 
         [
-            testCase "is never empty for grids that can be solved" $ 
-                getGrids >>= \grids ->
-                all (not . null) (map G.steps grids)
-                @?= True
-        ,   testCase "does not contain the same grid more than once" $ 
-                getGrids >>= \grids -> 
-                all (\xs -> length xs == length (nub xs)) (map G.steps grids)
-                @?= True  
-        ,   testCase "the last grid has at least one solution" $ 
-                getGrids >>= \grids ->
-                (all (not . null) . map (G.solve . last . G.steps)) grids 
-                @?= True
-        ]
+            testCase "returns results for all test grids" $ 
+                getResults >>= \results -> mapM_ (\r -> 
+                    assertBool "grid has no results" 
+                            (not $ null r)
+                ) results
+        ,   testCase "results are all unique" $ 
+                getResults >>= \results -> mapM_ (\r -> 
+                    length r @?= length (nub r)
+                ) results
+        ,   testCase "the last step in the sequence is a solution (via solve)" $ 
+                getResults >>= \results -> mapM_ (\r -> 
+                    assertBool "solve returns an empty list" 
+                        (not $ null $ G.solve (last r))
+                ) results
+        ] 
 
 --------------------------------------------------------------------------------
 
