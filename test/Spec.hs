@@ -116,6 +116,7 @@ tests :: TestTree
 tests = testGroup "Game" 
     [
         evalTests
+    ,   applyTests
     ,   resultTests
     ,   solveRowTests
     ,   solveTests
@@ -130,6 +131,17 @@ evalTests = testGroup "eval"
             \(Positive n) acc -> G.eval (Add n) acc === n+acc 
     ,   QC.testProperty "Sub subtracts the number from the accumulator" $ 
             \(Positive n) acc -> G.eval (Sub n) acc === acc-n
+    ]
+
+applyTests :: TestTree 
+applyTests = testGroup "apply"
+    [
+        QC.testProperty "Disabled cells have no effect on the accumulator" $ 
+            \action acc -> G.apply (Cell False action) acc === acc
+    ,   QC.testProperty "Enabled cells have the expected effect (Add)" $ 
+            \(Positive n) acc -> G.apply (Cell True (Add n)) acc === n+acc 
+    ,   QC.testProperty "Enabled cells have the expected effect (Sub)" $ 
+            \(Positive n) acc -> G.apply (Cell True (Sub n)) acc === acc-n 
     ]
 
 resultTests :: TestTree 
