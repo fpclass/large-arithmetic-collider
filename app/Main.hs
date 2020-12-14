@@ -109,7 +109,8 @@ playLevel (Level p g) = do
     putStr "Press enter to advance to the next level..."
     void getLine
 
--- | `startCampaign` @campaign@.
+-- | `startCampaign` @campaign@ loads all levels for @campaign@ and calls
+-- `playLevel` for each of them.
 startCampaign :: Campaign -> IO ()
 startCampaign (Campaign _ _ dir) = do 
     -- try to load the levels for this campaign
