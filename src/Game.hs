@@ -15,15 +15,15 @@ data Action
     deriving (Eq, Show)
 
 -- | Represents a cell including whether it is enabled and its action.
-data Cell = Cell Bool Action
+data Cell = MkCell Bool Action
     deriving (Eq, Show)
 
 -- | A row has a target number and consists of zero or more cells.
-data Row = Row Int [Cell]
+data Row = MkRow Int [Cell]
     deriving (Eq, Show)
 
 -- | A grid is comprised of the target numbers for all columns and the rows.
-data Grid = Grid [Int] [Row]
+data Grid = MkGrid [Int] [Row]
     deriving (Eq, Show)
 
 --------------------------------------------------------------------------------

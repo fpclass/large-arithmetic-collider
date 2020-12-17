@@ -40,7 +40,7 @@ instance HasOperand Action where
     getOperand (Sub n) = n
 
 instance HasOperand Cell where 
-    getOperand (Cell _ a) = getOperand a
+    getOperand (MkCell _ a) = getOperand a
 
 --------------------------------------------------------------------------------
 
@@ -57,19 +57,19 @@ action = Gen.frequency
 
 -- | `cell` randomly generates a `Cell`.
 cell :: MonadGen m => m Cell
-cell = Cell <$> Gen.bool <*> action
+cell = MkCell <$> Gen.bool <*> action
 
 -- | `addCell` randomly generates an enabled `Cell` whose action is `Add`.
 addCell :: MonadGen m => m Cell 
-addCell = Cell True . Add <$> natural
+addCell = MkCell True . Add <$> natural
 
 -- | `subCell` randomly generates an enabled `Cell` whose action is `Sub`.
 subCell :: MonadGen m => m Cell 
-subCell = Cell True . Sub <$> natural
+subCell = MkCell True . Sub <$> natural
 
 -- | `disCell` randomly generates a disabled `Cell`.
 disCell :: MonadGen m => m Cell 
-disCell = Cell False <$> action
+disCell = MkCell False <$> action
 
 -- | `row` randomly generates a `Row` with up to 100 cells. Note that this uses
 -- the `result` function that students have to implement so the rows produced
@@ -77,7 +77,7 @@ disCell = Cell False <$> action
 row :: MonadGen m => m Row 
 row = do
     cells <- Gen.list (Range.constant 0 100) cell
-    pure $ Row (result cells) [Cell False op | Cell _ op <- cells]
+    pure $ MkRow (result cells) [MkCell False op | MkCell _ op <- cells]
 
 --------------------------------------------------------------------------------
 
@@ -101,20 +101,20 @@ loadAdvGrids = loadGrids "levels/3-adv-grids"
 
 -- | `columnCount` @grid@ determines how many columns there are in @grid@.
 columnCount :: Grid -> Int 
-columnCount (Grid cts _) = length cts 
+columnCount (MkGrid cts _) = length cts 
 
 -- | `rowCount` @grid@ determines how many rows there are in @grid@. 
 rowCount :: Grid -> Int 
-rowCount (Grid _ rs) = length rs 
+rowCount (MkGrid _ rs) = length rs 
 
 -- | `structureEq` @g1 g2@ checks whether @g1@ and @g2@ are structurally 
 -- equivalent. That is, equivalent except for the states of cells.
 structureEq :: Grid -> Grid -> Bool 
-structureEq (Grid cts rs) (Grid cts' rs') =
+structureEq (MkGrid cts rs) (MkGrid cts' rs') =
     cts==cts' && all (uncurry testRow) (zip rs rs')
-    where testRow (Row t cs) (Row t' cs') = 
+    where testRow (MkRow t cs) (MkRow t' cs') = 
             t==t' && all (uncurry testCell) (zip cs cs')
-          testCell (Cell _ a) (Cell _ a') = a==a'
+          testCell (MkCell _ a) (MkCell _ a') = a==a'
 
 --------------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ prop_apply_disabled :: Property
 prop_apply_disabled = property $ do 
     a <- forAll action
     acc <- forAll $ Gen.integral Range.constantBounded
-    apply (Cell False a) acc === acc
+    apply (MkCell False a) acc === acc
 
 -- | `prop_apply_add` tests that enabled `Add` cells affect the result 
 -- of `apply`.
@@ -156,7 +156,7 @@ prop_apply_add :: Property
 prop_apply_add = property $ do 
     n <- forAll natural
     acc <- forAll $ Gen.integral Range.constantBounded
-    apply (Cell True (Add n)) acc === n+acc
+    apply (MkCell True (Add n)) acc === n+acc
 
 -- | `prop_apply_sub` tests that enabled `Sub` cells affect the result 
 -- of `apply`.
@@ -164,7 +164,7 @@ prop_apply_sub :: Property
 prop_apply_sub = property $ do 
     n <- forAll natural
     acc <- forAll $ Gen.integral Range.constantBounded
-    apply (Cell True (Sub n)) acc === acc-n
+    apply (MkCell True (Sub n)) acc === acc-n
 
 applyTests :: TestTree 
 applyTests = testGroup "apply"
@@ -231,18 +231,18 @@ resultTests = testGroup "result"
 -- solution for a `Row` that is solvable (see note about `row`).
 prop_solveRow_solvable :: Property 
 prop_solveRow_solvable = property $ do 
-    row <- forAll row
-    solveRow row /== []
+    r <- forAll row
+    solveRow r /== []
 
 -- | `prop_solveRow_sameTarget` test that the solutions returned by `solveRow`
 -- all have the same target and same number of cells as the input `Row`.
 prop_solveRow_sameTarget :: Property
 prop_solveRow_sameTarget = property $ do 
     -- randomly generate a row
-    row@(Row t cs) <- forAll row
+    r@(MkRow t cs) <- forAll row
 
     -- calculate all solutions using `solveRow` and display them
-    let solutions = solveRow row 
+    let solutions = solveRow r 
     annotateShow solutions 
 
     -- check that there is at least one solution
@@ -250,23 +250,23 @@ prop_solveRow_sameTarget = property $ do
 
     -- for every solution returned by `solveRow`, check that it has the same
     -- target and the same number of cells as the input
-    forM_ solutions $ \sol@(Row t' cs') -> do 
+    forM_ solutions $ \(MkRow t' cs') -> do 
         t === t' 
         length cs === length cs' 
 
 prop_solveRow_evaluate :: Property 
 prop_solveRow_evaluate = property $ do 
-    row@(Row t _) <- forAll row
-    let solutions = solveRow row 
+    r@(MkRow t _) <- forAll row
+    let solutions = solveRow r 
     length solutions /== 0
-    forM_ solutions $ \(Row _ cs) -> 
+    forM_ solutions $ \(MkRow _ cs) -> 
         result cs === t
 
 solveRowTests :: TestTree 
 solveRowTests = localOption (HedgehogTestLimit $ Just 25) $ testGroup "solveRow" 
     [
         testCase "the solution for Row 0 [] is Row 0 []" $ 
-            solveRow (Row 0 []) @?= [Row 0 []]
+            solveRow (MkRow 0 []) @?= [MkRow 0 []]
     ,   testProperty "finds at least one result for rows that have a solution" $ 
             prop_solveRow_solvable
     ,   testProperty "all results have the same target and number of cells as the input" $
@@ -286,13 +286,13 @@ solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map sol
                     structureEq g s @?= True) sols
                 ) results 
         ,   testCase "returned grids whose rows result in their targets (via result)" $ 
-                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(Grid _ rs) -> 
-                    mapM_ (\(Row t cs) -> t @?= result cs) rs) sols
+                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid _ rs) -> 
+                    mapM_ (\(MkRow t cs) -> t @?= result cs) rs) sols
                 ) (map snd results)
         ,   testCase "returned grids whose columns result in their targets (via result)" $
-                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(Grid cs rs) -> 
+                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid cs rs) -> 
                     mapM_ (\(t,col) -> t @?= result col) $ 
-                        zip cs $ transpose (map (\(Row _ cells) -> cells) rs)) sols
+                        zip cs $ transpose (map (\(MkRow _ cells) -> cells) rs)) sols
                 ) (map snd results)
         ,   testCase "finds results for all of the examples" $
                 getResults >>= \results -> mapM_ (\sols -> 

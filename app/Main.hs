@@ -3,7 +3,7 @@
 -- Coursework 1: Large Arithmetic Collider                                    --
 --------------------------------------------------------------------------------
 
-module Main where
+module Main ( main ) where
 
 --------------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ promptInt prompt = do
 -- | `playLevel` @level@ is a computation which uses the `solve` and `steps`
 -- functions to play @level@.
 playLevel :: Level -> IO ()
-playLevel (Level p g) = do 
+playLevel (MkLevel p g) = do 
     -- render the grid to the standard output
     renderGrid True g
 
@@ -112,7 +112,7 @@ playLevel (Level p g) = do
 -- | `startCampaign` @campaign@ loads all levels for @campaign@ and calls
 -- `playLevel` for each of them.
 startCampaign :: Campaign -> IO ()
-startCampaign (Campaign _ _ dir) = do 
+startCampaign (MkCampaign _ _ dir) = do 
     -- try to load the levels for this campaign
     mlevels <- loadLevels ("levels" </> dir)
 

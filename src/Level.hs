@@ -8,7 +8,14 @@
 
 -- | This module contains types to represent levels and campaigns along with 
 -- functions to load/save levels and campaigns.
-module Level where 
+module Level (
+    Level(..),
+    loadLevel,
+    saveLevel,
+    Campaign(..),
+    listCampaigns,
+    loadLevels
+) where 
 
 --------------------------------------------------------------------------------
 
@@ -43,50 +50,50 @@ instance FromJSON Action where
             _ -> mzero
 
 instance ToJSON Cell where 
-    toJSON (Cell _ a) = toJSON a
+    toJSON (MkCell _ a) = toJSON a
 
 instance FromJSON Cell where 
-    parseJSON v = Cell False <$> parseJSON v
+    parseJSON v = MkCell False <$> parseJSON v
 
 instance ToJSON Row where 
-    toJSON (Row t cs) = 
+    toJSON (MkRow t cs) = 
         object [ "target" .= t 
                , "cells"  .= cs 
                ]
 
 instance FromJSON Row where 
     parseJSON = withObject "Row" $ \obj ->
-        Row <$> obj .: "target" <*> obj .: "cells"
+        MkRow <$> obj .: "target" <*> obj .: "cells"
 
 instance ToJSON Grid where 
-    toJSON (Grid cts rows) = 
+    toJSON (MkGrid cts rows) = 
         object [ "columns" .= cts
                , "rows"    .= rows 
                ]
 
 instance FromJSON Grid where 
     parseJSON = withObject "Grid" $ \obj ->
-        Grid <$> obj .: "columns" <*> obj .: "rows"
+        MkGrid <$> obj .: "columns" <*> obj .: "rows"
 
 --------------------------------------------------------------------------------
 
 -- | Represents a level consisting of a par number of rotations and a grid.
-data Level = Level {
+data Level = MkLevel {
     -- | The par number of rotations required to solve this level.
     levelPar  :: Int,
     -- | The grid that makes up the level.
     levelGrid :: Grid
-}
+} deriving (Eq, Show)
 
 instance ToJSON Level where 
-    toJSON (Level par grid) = 
+    toJSON (MkLevel par grid) = 
         object [ "par"  .= par 
                , "grid" .= grid 
                ]
 
 instance FromJSON Level where 
     parseJSON = withObject "Level" $ \obj ->
-        Level <$> obj .: "par" <*> obj .: "grid"
+        MkLevel <$> obj .: "par" <*> obj .: "grid"
 
 -- | `saveLevel` @filepath level@ saves @level@ to @filepath@.
 saveLevel :: FilePath -> Level -> IO ()
@@ -99,20 +106,20 @@ loadLevel = eitherDecodeFileStrict
 --------------------------------------------------------------------------------
 
 -- | Represents a campaign (a collection of levels).
-data Campaign = Campaign {
+data Campaign = MkCampaign {
     -- | The title of the campaign.
     campaignTitle :: String,
     -- | The description of the campaign.
     campaignDesc  :: String,
     -- | The path to the levels folder for this campaign.
     campaignPath  :: FilePath
-}
+} deriving (Eq, Show)
 
 instance FromJSON Campaign where 
     parseJSON = withObject "Campaign" $ \obj ->
-        Campaign <$> obj .: "title"
-                 <*> obj .: "description"
-                 <*> obj .: "path"
+        MkCampaign <$> obj .: "title"
+                   <*> obj .: "description"
+                   <*> obj .: "path"
 
 -- | `listCampaigns` is a computation which loads the list of campaigns.
 listCampaigns :: IO (Maybe [Campaign])
