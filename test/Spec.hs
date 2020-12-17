@@ -6,14 +6,26 @@
 {-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
+--------------------------------------------------------------------------------
+
+module Main ( main ) where
+
+--------------------------------------------------------------------------------
+
+import Control.Monad
+
 import Data.List (nub, transpose)
 
 import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.Basic
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
+import Test.Tasty.Hedgehog as H
 import Test.Tasty.Runners.AntXML
+
+import Hedgehog hiding (Action, eval)
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import Game as G
 import Level
@@ -32,46 +44,40 @@ instance HasOperand Cell where
 
 --------------------------------------------------------------------------------
 
-instance Arbitrary Action where 
-    arbitrary = frequency [ (1, Add <$> arbitrarySizedNatural)
-                          , (1, Sub <$> arbitrarySizedNatural)
-                          ]
+-- | `natural` randomly generates a positive integer.
+natural :: (MonadGen m, Integral a, Bounded a) => m a
+natural = Gen.integral $ Range.constant 0 maxBound
 
-instance Arbitrary Cell where 
-    arbitrary = Cell <$> arbitrary <*> arbitrary
+-- | `action` randomly generates an `Action`.
+action :: MonadGen m => m Action 
+action = Gen.frequency 
+    [ (1, Add <$> natural)
+    , (1, Sub <$> natural)
+    ]
 
-newtype AddCell = AddCell { unAddCell :: Cell }
-newtype SubCell = SubCell { unSubCell :: Cell }
-newtype DisCell = DisCell { unDisCell :: Cell }
+-- | `cell` randomly generates a `Cell`.
+cell :: MonadGen m => m Cell
+cell = Cell <$> Gen.bool <*> action
 
-instance Show AddCell where 
-    show = show . unAddCell
+-- | `addCell` randomly generates an enabled `Cell` whose action is `Add`.
+addCell :: MonadGen m => m Cell 
+addCell = Cell True . Add <$> natural
 
-instance Show SubCell where 
-    show = show . unSubCell
+-- | `subCell` randomly generates an enabled `Cell` whose action is `Sub`.
+subCell :: MonadGen m => m Cell 
+subCell = Cell True . Sub <$> natural
 
-instance Show DisCell where 
-    show = show . unDisCell
+-- | `disCell` randomly generates a disabled `Cell`.
+disCell :: MonadGen m => m Cell 
+disCell = Cell False <$> action
 
-instance HasOperand AddCell where 
-    getOperand = getOperand . unAddCell
-
-instance HasOperand SubCell where 
-    getOperand = getOperand . unSubCell
-
-instance Arbitrary AddCell where 
-    arbitrary = AddCell . Cell True . Add <$> arbitrarySizedNatural
-
-instance Arbitrary SubCell where 
-    arbitrary = SubCell . Cell True . Sub <$> arbitrarySizedNatural
-    
-instance Arbitrary DisCell where 
-    arbitrary = DisCell . Cell False <$> arbitrary
-
-instance Arbitrary Row where 
-    arbitrary = do 
-        cells <- arbitrary 
-        pure $ Row (G.result cells) [Cell False op | Cell _ op <- cells]
+-- | `row` randomly generates a `Row` with up to 100 cells. Note that this uses
+-- the `result` function that students have to implement so the rows produced
+-- may not be solvable if `result` doesn't work correctly.
+row :: MonadGen m => m Row 
+row = do
+    cells <- Gen.list (Range.constant 0 100) cell
+    pure $ Row (result cells) [Cell False op | Cell _ op <- cells]
 
 --------------------------------------------------------------------------------
 
@@ -112,76 +118,167 @@ structureEq (Grid cts rs) (Grid cts' rs') =
 
 --------------------------------------------------------------------------------
 
-tests :: TestTree
-tests = testGroup "Game" 
-    [
-        evalTests
-    ,   applyTests
-    ,   resultTests
-    ,   solveRowTests
-    ,   solveTests
-    ,   rotationsTests
-    ,   stepsTests
-    ]
+-- | `prop_eval_adds` tests that `eval` works correctly for `Add`.
+prop_eval_adds :: Property 
+prop_eval_adds = property $ do 
+    n <- forAll $ Gen.integral $ Range.constant 0 maxBound 
+    acc <- forAll $ Gen.integral $ Range.constantBounded
+    eval (Add n) acc === n+acc
+
+-- | `prop_eval_subs` tests that `eval` works correctly for `Sub`.
+prop_eval_subs :: Property 
+prop_eval_subs = property $ do 
+    n <- forAll $ Gen.integral $ Range.constant 0 maxBound 
+    acc <- forAll $ Gen.integral $ Range.constantBounded
+    eval (Sub n) acc === acc-n
 
 evalTests :: TestTree 
 evalTests = testGroup "eval" 
     [
-        QC.testProperty "Add adds the number to the accumulator" $
-            \(Positive n) acc -> G.eval (Add n) acc === n+acc 
-    ,   QC.testProperty "Sub subtracts the number from the accumulator" $ 
-            \(Positive n) acc -> G.eval (Sub n) acc === acc-n
+        testProperty "Add adds the number to the accumulator" $
+            prop_eval_adds
+    ,   testProperty "Sub subtracts the number from the accumulator" $ 
+            prop_eval_subs
     ]
+
+--------------------------------------------------------------------------------
+
+-- | `prop_apply_disabled` tests that disabled cells have no effect in `apply`.
+prop_apply_disabled :: Property
+prop_apply_disabled = property $ do 
+    a <- forAll action
+    acc <- forAll $ Gen.integral Range.constantBounded
+    apply (Cell False a) acc === acc
+
+-- | `prop_apply_add` tests that enabled `Add` cells affect the result 
+-- of `apply`.
+prop_apply_add :: Property
+prop_apply_add = property $ do 
+    n <- forAll natural
+    acc <- forAll $ Gen.integral Range.constantBounded
+    apply (Cell True (Add n)) acc === n+acc
+
+-- | `prop_apply_sub` tests that enabled `Sub` cells affect the result 
+-- of `apply`.
+prop_apply_sub :: Property 
+prop_apply_sub = property $ do 
+    n <- forAll natural
+    acc <- forAll $ Gen.integral Range.constantBounded
+    apply (Cell True (Sub n)) acc === acc-n
 
 applyTests :: TestTree 
 applyTests = testGroup "apply"
     [
-        QC.testProperty "Disabled cells have no effect on the accumulator" $ 
-            \action acc -> G.apply (Cell False action) acc === acc
-    ,   QC.testProperty "Enabled cells have the expected effect (Add)" $ 
-            \(Positive n) acc -> G.apply (Cell True (Add n)) acc === n+acc 
-    ,   QC.testProperty "Enabled cells have the expected effect (Sub)" $ 
-            \(Positive n) acc -> G.apply (Cell True (Sub n)) acc === acc-n 
+        testProperty "Disabled cells have no effect on the accumulator" $ 
+            prop_apply_disabled
+    ,   testProperty "Enabled cells have the expected effect (Add)" $ 
+            prop_apply_add
+    ,   testProperty "Enabled cells have the expected effect (Sub)" $ 
+            prop_apply_sub 
     ]
+
+--------------------------------------------------------------------------------
+
+-- | `prop_result_disabled` tests that `result` is 0 for disabled cells.
+prop_result_disabled :: Property
+prop_result_disabled = property $ do 
+    xs <- forAll $ Gen.list (Range.constant 0 100) disCell
+    result xs === 0
+
+-- | `prop_result_add` tests that `result` for enabled `Add` cells is the sum
+-- of all cell operands.
+prop_result_add :: Property
+prop_result_add = property $ do 
+    xs <- forAll $ Gen.list (Range.constant 0 100) addCell
+    result xs === sum (map getOperand xs)
+
+-- | `prop_result_sub` tests that `result` for enabled `Sub` cells is the
+-- negated sum of all cell operands.
+prop_result_sub :: Property
+prop_result_sub = property $ do 
+    xs <- forAll $ Gen.list (Range.constant 0 100) subCell
+    result xs === (-1) * sum (map getOperand xs)
+
+-- | `prop_result_mix` tests that `result` produces the correct results for a
+-- mix of enabled/disabled cells.
+prop_result_mix :: Property
+prop_result_mix = property $ do 
+    xs <- forAll $ Gen.list (Range.constant 0 100) disCell
+    ys <- forAll $ Gen.list (Range.constant 0 100) addCell
+    zs <- forAll $ Gen.list (Range.constant 0 100) subCell
+    let x = sum (map getOperand ys)
+    let y = (-1) * sum (map getOperand zs)
+    result (xs++ys++zs++ys++xs) === x + y + x
 
 resultTests :: TestTree 
 resultTests = testGroup "result"
     [
         testCase "returns 0 for the empty list" $ 
-            G.result [] @?= 0
-    ,   QC.testProperty "returns 0 if all cells are disabled" $
-            \(xs :: [DisCell]) -> G.result (map unDisCell xs) === 0
-    ,   QC.testProperty "returns the sum if all cells are add cells" $ 
-            \(xs :: [AddCell]) -> G.result (map unAddCell xs) === 
-                                  sum (map getOperand xs)
-    ,   QC.testProperty "returns the sum*(-1) if all cells are sub cells" $ 
-            \(xs :: [SubCell]) -> G.result (map unSubCell xs) === 
-                                  (-1) * sum (map getOperand xs)
-    ,   QC.testProperty "works correctly with a mix of cell types" $
-            \(xs :: [DisCell]) (ys :: [AddCell]) (zs :: [SubCell]) ->
-                let as = map unDisCell xs
-                    bs = map unAddCell ys 
-                    cs = map unSubCell zs
-                    x  = sum (map getOperand ys)
-                    y  = (-1) * sum (map getOperand zs)
-                in G.result (as ++ bs ++ cs ++ bs ++ as) === x + y + x
+            result [] @?= 0
+    ,   testProperty "returns 0 if all cells are disabled" $
+            prop_result_disabled
+    ,   testProperty "returns the sum if all cells are add cells" $ 
+            prop_result_add
+    ,   testProperty "returns the sum*(-1) if all cells are sub cells" $ 
+            prop_result_sub
+    ,   testProperty "works correctly with a mix of cell types" $
+            prop_result_mix
     ]
+
+--------------------------------------------------------------------------------
+
+-- | `prop_solveRow_solvable` tests that `solveRow` produces at least some
+-- solution for a `Row` that is solvable (see note about `row`).
+prop_solveRow_solvable :: Property 
+prop_solveRow_solvable = property $ do 
+    row <- forAll row
+    solveRow row /== []
+
+-- | `prop_solveRow_sameTarget` test that the solutions returned by `solveRow`
+-- all have the same target and same number of cells as the input `Row`.
+prop_solveRow_sameTarget :: Property
+prop_solveRow_sameTarget = property $ do 
+    -- randomly generate a row
+    row@(Row t cs) <- forAll row
+
+    -- calculate all solutions using `solveRow` and display them
+    let solutions = solveRow row 
+    annotateShow solutions 
+
+    -- check that there is at least one solution
+    length solutions /== 0
+
+    -- for every solution returned by `solveRow`, check that it has the same
+    -- target and the same number of cells as the input
+    forM_ solutions $ \sol@(Row t' cs') -> do 
+        t === t' 
+        length cs === length cs' 
+
+prop_solveRow_evaluate :: Property 
+prop_solveRow_evaluate = property $ do 
+    row@(Row t _) <- forAll row
+    let solutions = solveRow row 
+    length solutions /== 0
+    forM_ solutions $ \(Row _ cs) -> 
+        result cs === t
 
 solveRowTests :: TestTree 
-solveRowTests = localOption (QuickCheckMaxSize 25) $ testGroup "solveRow" 
+solveRowTests = localOption (HedgehogTestLimit $ Just 25) $ testGroup "solveRow" 
     [
-        testCase "finds a solution for Row 0 []" $ 
-            G.solveRow (Row 0 []) @?= [Row 0 []]
-    ,   QC.testProperty "finds at least one result for rows that have a solution" $ 
-            \row -> G.solveRow row =/= []
-    ,   QC.testProperty "all results have the same target and number of cells as the input" $
-            \row@(Row t cs) -> all (\(Row t' cs') -> t==t' && length cs == length cs') (G.solveRow row)
-    ,   QC.testProperty "all results evaluate to to the target (via result)" $
-            \row@(Row t _) -> all (\(Row _ cs) -> G.result cs == t) (G.solveRow row)
+        testCase "the solution for Row 0 [] is Row 0 []" $ 
+            solveRow (Row 0 []) @?= [Row 0 []]
+    ,   testProperty "finds at least one result for rows that have a solution" $ 
+            prop_solveRow_solvable
+    ,   testProperty "all results have the same target and number of cells as the input" $
+            prop_solveRow_sameTarget
+    ,   testProperty "all results evaluate to to the target (via result)" $
+            prop_solveRow_evaluate
     ]
 
+--------------------------------------------------------------------------------
+
 solveTests :: TestTree 
-solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map G.solve grids)) (const $ pure ()) $ 
+solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map solve grids)) (const $ pure ()) $ 
     \getResults -> testGroup "solve" 
         [
             testCase "returned grids are structurally the same as the inputs (same dimensions and cells)" $
@@ -204,6 +301,8 @@ solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map G.s
                  ) (map snd results) 
         ]
 
+--------------------------------------------------------------------------------
+
 rotationsTests :: TestTree 
 rotationsTests = withResource loadAdvGrids (const $ pure ()) $ 
     \getGrids -> testGroup "rotations"
@@ -211,13 +310,15 @@ rotationsTests = withResource loadAdvGrids (const $ pure ()) $
             testCase "returns rows+columns many grids (for grids 2x2 and up)" $ 
                 getGrids >>= \grids -> mapM_ (\(g,rs) -> 
                     length rs @?= columnCount g + rowCount g
-                ) (zip grids (map G.rotations grids))
+                ) (zip grids (map rotations grids))
         ]
-         
+
+--------------------------------------------------------------------------------
+
 stepsTests :: TestTree 
 stepsTests = 
     withResource 
-        (loadAdvGrids >>= \grids -> pure $ map G.steps grids) 
+        (loadAdvGrids >>= \grids -> pure $ map steps grids) 
         (const $ pure ()) $ 
     \getResults -> testGroup "steps" 
         [
@@ -233,14 +334,28 @@ stepsTests =
         ,   testCase "the last step in the sequence is a solution (via solve)" $ 
                 getResults >>= \results -> mapM_ (\r -> 
                     assertBool "solve returns an empty list" 
-                        (not $ null $ G.solve (last r))
+                        (not $ null $ solve (last r))
                 ) results
         ] 
 
 --------------------------------------------------------------------------------
 
+tests :: TestTree
+tests = localOption (HedgehogShowReplay False) $ testGroup "Game" 
+    [
+        evalTests
+    ,   applyTests
+    ,   resultTests
+    ,   solveRowTests
+    ,   solveTests
+    ,   rotationsTests
+    ,   stepsTests
+    ]
+
+--------------------------------------------------------------------------------
+
 -- | The list of tasty ingredients. Note: the order seems to matter, 
--- anyXMLRunner won't work at all if placed last in the list.
+-- antXMLRunner won't work at all if placed last in the list.
 ingredients :: [Ingredient]
 ingredients = [antXMLRunner, listingTests, consoleTestReporter]
 

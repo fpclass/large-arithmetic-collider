@@ -1,19 +1,19 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2bc468c8594cc8f39b01616d6edb6734008df9e260ada0af2a937b18ec473b15
+-- hash: a6a10eb6ed72ff805faadc32cbbbf4dbfebed5247c1159f864c9df18406cf602
 
 name:           large-arithmetic-collider
-version:        0.1.0.0
+version:        0.2.0.0
 description:    Please see the README on GitHub at <https://github.com/fpclass/large-arithmetic-collider#readme>
 homepage:       https://github.com/fpclass/large-arithmetic-collider#readme
 bug-reports:    https://github.com/fpclass/large-arithmetic-collider/issues
 author:         Michael B. Gale
 maintainer:     m.gale@warwick.ac.uk
-copyright:      2019 Michael B. Gale
+copyright:      2020 Michael B. Gale
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
@@ -70,16 +70,16 @@ test-suite large-arithmetic-collider-test
       test
   ghc-options: -threaded -rtsopts -Wall -O2
   build-depends:
-      QuickCheck
-    , aeson
+      aeson
     , base >=4.7 && <5
     , directory
     , filepath
+    , hedgehog
     , large-arithmetic-collider
     , random
     , tasty
     , tasty-ant-xml
+    , tasty-hedgehog
     , tasty-hunit
-    , tasty-quickcheck
     , unordered-containers
   default-language: Haskell2010

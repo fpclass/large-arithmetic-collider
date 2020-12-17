@@ -1,10 +1,10 @@
 name:                large-arithmetic-collider
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "fpclass/large-arithmetic-collider"
 license:             MIT
 author:              "Michael B. Gale"
 maintainer:          "m.gale@warwick.ac.uk"
-copyright:           "2019 Michael B. Gale"
+copyright:           "2020 Michael B. Gale"
 
 extra-source-files:
 - README.md
@@ -56,6 +56,6 @@ tests:
     - large-arithmetic-collider
     - tasty
     - tasty-hunit
-    - tasty-quickcheck
+    - tasty-hedgehog
     - tasty-ant-xml
-    - QuickCheck
+    - hedgehog
