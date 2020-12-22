@@ -15,7 +15,7 @@ module Main ( main ) where
 
 import Control.Monad
 
-import Data.List (nub, transpose)
+import Data.List (nub, transpose, sort)
 
 import Test.Tasty
 import Test.Tasty.Ingredients
@@ -50,6 +50,19 @@ instance HasOperand Cell where
 getAction :: Cell -> Action
 getAction (MkCell _ a) = a
 
+-- | `getCells` @row@ extracts the cells from @row@.
+getCells :: Row -> [Cell]
+getCells (MkRow _ cs) = cs
+
+-- | `disable` @cell@ marks @cell@ as disabled.
+disable :: Cell -> Cell
+disable (MkCell _ a) = MkCell False a
+
+-- | `gridSize` @grid@ calculates how many cells there are in a grid (for
+-- classification purposes).
+gridSize :: Grid -> Int 
+gridSize (MkGrid ts rs) = length ts * length rs
+
 --------------------------------------------------------------------------------
 
 -- | `natural` randomly generates a positive integer up to 255.
@@ -79,13 +92,26 @@ subCell = MkCell True . Sub <$> natural
 disCell :: MonadGen m => m Cell 
 disCell = MkCell False <$> action
 
--- | `row` randomly generates a `Row` with up to 100 cells. Note that this uses
+-- | `row` randomly generates a `Row` with up to 10 cells. Note that this uses
 -- the `result` function that students have to implement so the rows produced
 -- may not be solvable if `result` doesn't work correctly.
 row :: MonadGen m => m Row 
 row = do
     cells <- Gen.list (Range.constant 0 10) cell
-    pure $ MkRow (result cells) [MkCell False op | MkCell _ op <- cells]
+    pure $ MkRow (result cells) (map disable cells)
+
+-- | `grid` @size@ randomly generates a grid of up to @size@x@size@ cells.
+-- Note that this uses the `result` function that students have to implement 
+-- so the grids produced may not be solvable if `result` doesn't work correctly.
+grid :: MonadGen m => Range.Range Int -> m Grid
+grid range = do 
+    rowSize <- Gen.integral range
+    cells <- Gen.list range $ Gen.list (Range.singleton rowSize) cell
+
+    let columns = map result $ transpose cells
+    let rows = map (\cs -> MkRow (result cs) (map disable cs)) cells
+
+    pure $ MkGrid columns rows
 
 --------------------------------------------------------------------------------
 
@@ -123,6 +149,22 @@ structureEq (MkGrid cts rs) (MkGrid cts' rs') =
     where testRow (MkRow t cs) (MkRow t' cs') = 
             t==t' && all (uncurry testCell) (zip cs cs')
           testCell (MkCell _ a) (MkCell _ a') = a==a'
+
+-- | `allActions` @rows@ returns a list of all `Action`s in @rows@.
+allActions :: [Row] -> [Action]
+allActions = map getAction . concat . map getCells
+
+-- | `rotationEq` @a b@ checks that two grids @a@ and @b@ are equivalent for
+-- rotation purposes. That is, they have the same dimensions and the same
+-- row and column targets, but no checks are performed on cells.
+rotationEq :: Grid -> Grid -> Bool 
+rotationEq (MkGrid ts rs) (MkGrid ts' rs') =
+    ts == ts' &&
+    length rs == length rs' &&
+    and (zipWith checkRow rs rs') &&
+    sort (allActions rs) == sort (allActions rs')
+    where checkRow (MkRow t cs) (MkRow t' cs') =
+            t==t' && length cs == length cs'
 
 --------------------------------------------------------------------------------
 
@@ -379,15 +421,26 @@ candidatesTests = testGroup "candidates"
 -- solution for a `Row` that is solvable (see note about `row`).
 prop_solveRow_solvable :: Property 
 prop_solveRow_solvable = property $ do 
-    r <- forAll row
+    -- randomly generate a row
+    r@(MkRow _ cs) <- forAll row
+
+    -- classify the row
+    classify "small rows" $ length cs < 5
+    classify "large rows" $ length cs >= 5
+
+    -- check that the row has solutions
     solveRow r /== []
 
--- | `prop_solveRow_sameTarget` test that the solutions returned by `solveRow`
+-- | `prop_solveRow_sameTarget` tests that the solutions returned by `solveRow`
 -- all have the same target and same number of cells as the input `Row`.
 prop_solveRow_sameTarget :: Property
 prop_solveRow_sameTarget = property $ do 
     -- randomly generate a row
     r@(MkRow t cs) <- forAll row
+
+    -- classify the row
+    classify "small rows" $ length cs < 5
+    classify "large rows" $ length cs >= 5
 
     -- calculate all solutions using `solveRow` and display them
     let solutions = solveRow r 
@@ -402,11 +455,24 @@ prop_solveRow_sameTarget = property $ do
         t === t' 
         length cs === length cs' 
 
+-- | `prop_solveRow_evaluate` tests that the solutions returned by `solveRow`
+-- all evaluate to the row target.
 prop_solveRow_evaluate :: Property 
-prop_solveRow_evaluate = property $ do 
-    r@(MkRow t _) <- forAll row
+prop_solveRow_evaluate = property $ do
+    -- randomly generate a row
+    r@(MkRow t xs) <- forAll row
+
+    -- classify the row
+    classify "small rows" $ length xs < 5
+    classify "large rows" $ length xs >= 5
+
+    -- calculate the solutions for the row
     let solutions = solveRow r 
+
+    -- check that there is at least one solution
     length solutions /== 0
+
+    -- for every solution, check that it evaluates to the target
     forM_ solutions $ \(MkRow _ cs) -> 
         result cs === t
 
@@ -430,65 +496,171 @@ solveRowTests = testGroup "solveRow"
 
 --------------------------------------------------------------------------------
 
+-- | `prop_solve_structure` checks that `solve` returns solutions which are
+-- structurally equivalent (same dimensions, targets, and actions) as the input.
+prop_solve_structure :: Property
+prop_solve_structure = property $ do
+    -- generate a random grid
+    input <- forAll $ grid (Range.constant 0 10)
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50
+
+    -- generate the solutions and classify them
+    let solutions = solve input 
+
+    -- there should be at least one solution
+    length solutions /== 0
+
+    -- check that all solutions are structurally equivalent to the input
+    forM_ (solve input) $ \solution ->
+        diff solution structureEq input
+
+-- | `prop_solve_rows` checks that the rows in solutions returned by `solve`
+-- evaluate to their targets (using `result`).
+prop_solve_rows :: Property
+prop_solve_rows = property $ do 
+    -- generate a random grid
+    input <- forAll $ grid (Range.constant 0 10)
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50
+
+    -- generate the solutions and classify them
+    let solutions = solve input 
+
+    -- there should be at least one solution
+    length solutions /== 0
+
+    -- check that the result of the rows are the corresponding row targets
+    forM_ solutions $ \(MkGrid _ rows) -> 
+        forM_ rows $ \(MkRow target cells) ->
+            result cells === target
+
+-- | `prop_solve_columns` checks that the columns in solutions returned by 
+-- `solve` evaluate to their targets (using `result`).
+prop_solve_columns :: Property
+prop_solve_columns = property $ do 
+    -- generate a random grid
+    input <- forAll $ grid (Range.constant 0 10)
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50
+
+    -- generate the solutions and classify them
+    let solutions = solve input 
+
+    -- there should be at least one solution
+    length solutions /== 0
+
+    -- check that the result of the columns are the corresponding 
+    -- column targets
+    forM_ solutions $ \(MkGrid cts rows) -> do 
+        let columns = zip cts (transpose $ map getCells rows)
+        forM_ columns $ \(target, column) ->
+            result column === target
+
 solveTests :: TestTree 
-solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map solve grids)) (const $ pure ()) $ 
+solveTests = withResource 
+    (loadSmplGrids >>= \grids -> pure $ zip [1..] (map solve grids)) 
+    (const $ pure ()) $ 
     \getResults -> testGroup "solve" 
         [
-            testCase "results have the same structure as the inputs" $
-                getResults >>= \results -> mapM_ (\(g,sols) -> mapM_ (\s -> 
-                    structureEq g s @?= True) sols
-                ) results 
-        ,   testCase "rows of solutions result in their targets (via result)" $ 
-                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid _ rs) -> 
-                    mapM_ (\(MkRow t cs) -> t @?= result cs) rs) sols
-                ) (map snd results)
-        ,   testCase "columns of solutions result in their targets (via result)" $
-                getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid cs rs) -> 
-                    mapM_ (\(t,col) -> t @?= result col) $ 
-                        zip cs $ transpose (map (\(MkRow _ cells) -> cells) rs)) sols
-                ) (map snd results)
-        ,   testCase "finds results for all of the examples" $
-                getResults >>= \results -> mapM_ (\sols -> 
-                    assertBool "solve found no results" 
-                        (not $ null sols)
-                 ) (map snd results) 
+            testProperty
+                "results have the same structure as the inputs"
+                "prop_solve_structure"
+                prop_solve_structure
+        ,   testProperty
+                "rows of solutions result in their targets (via result)"
+                "prop_solve_rows"
+                prop_solve_rows
+        ,   testProperty
+                "columns of solutions result in their targets (via result)"
+                "prop_solve_columns"
+                prop_solve_columns
+        ,   testCaseSteps "solves grids from the simple campaign" $ \step -> do 
+                results <- getResults        
+                forM_ results $ \(lvl, sols) -> 
+                    when (null sols) $ do
+                        step ("simple grid #" <> show (lvl :: Int))
+                        assertFailure "solve found no solutions for this grid"
         ]
 
 --------------------------------------------------------------------------------
 
+-- | `prop_rotations_length` tests that grids with at least 2x2 cells have
+-- rows + columns many rotations
+prop_rotations_length :: Property
+prop_rotations_length = property $ do
+    -- generate a random grid with at least 2x2 cells
+    input <- forAll $ grid (Range.constant 2 10)
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50
+
+    -- check that the number of rotations returned is as expected
+    length (rotations input) === rowCount input + columnCount input
+
+-- | `prop_rotations_structure` checks that the structure of grids returned by
+-- `rotations` is the same as that of the input grid.
+prop_rotations_structure :: Property 
+prop_rotations_structure = property $ do
+    -- generate a random grid
+    input <- forAll $ grid (Range.constant 0 10)
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50 
+
+    -- for every rotation returned by the function, check that it is 
+    -- structurally the same according to `rotationEq`.
+    forM_ (rotations input) $ \rotation ->
+        diff rotation rotationEq input 
+
 rotationsTests :: TestTree 
-rotationsTests = withResource loadAdvGrids (const $ pure ()) $ 
-    \getGrids -> testGroup "rotations"
-        [
-            testCase "returns rows+columns many grids (for grids 2x2 and up)" $ 
-                getGrids >>= \grids -> mapM_ (\(g,rs) -> 
-                    length rs @?= columnCount g + rowCount g
-                ) (zip grids (map rotations grids))
-        ]
+rotationsTests = testGroup "rotations"
+    [
+        testProperty 
+            "returns rows+columns many grids (for grids 2x2 and up)"
+            "prop_rotations_length"
+            prop_rotations_length
+    ,   testProperty
+            "returns grids with the same structure as the input"
+            "prop_rotations_structure"
+            prop_rotations_structure
+    ]
 
 --------------------------------------------------------------------------------
 
 stepsTests :: TestTree 
 stepsTests = 
     withResource 
-        (loadAdvGrids >>= \grids -> pure $ map steps grids) 
+        (loadAdvGrids >>= \grids -> pure $ zip [1..] (map steps grids)) 
         (const $ pure ()) $ 
     \getResults -> testGroup "steps" 
         [
-            testCase "returns results for all test grids" $ 
-                getResults >>= \results -> mapM_ (\r -> 
-                    assertBool "grid has no results" 
-                            (not $ null r)
-                ) results
-        ,   testCase "results are all unique" $ 
-                getResults >>= \results -> mapM_ (\r -> 
-                    length r @?= length (nub r)
-                ) results
-        ,   testCase "the last step in the sequence is a solution (via solve)" $ 
-                getResults >>= \results -> mapM_ (\r -> 
-                    assertBool "solve returns an empty list" 
-                        (not $ null $ solve (last r))
-                ) results
+            testCaseSteps "returns results for all test grids" $ \step -> do 
+                results <- getResults
+                forM_ results $ \(idx,r) -> 
+                    when (null r) $ do 
+                        step ("advanced grid #" <> show (idx :: Int))
+                        assertFailure "grid has no results"
+        ,   testCaseSteps "results are all unique" $ \step -> do
+                results <- getResults
+                forM_ results $ \(idx,r) -> 
+                    when (length r /= length (nub r)) $ do
+                        step ("advanced grid #" <> show (idx :: Int))
+                        assertFailure "solve returns duplicate solutions"
+        ,   testCaseSteps "the last step in the sequence is a solution (via solve)" $ \step -> do
+                results <- getResults
+                forM_ results $ \(idx,r) ->
+                    when (null $ solve (last r)) $ do 
+                        step ("advanced grid #" <> show (idx :: Int))
+                        assertFailure "solve returns an empty list"
         ] 
 
 --------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ module Game where
 data Action 
     = Add Int 
     | Sub Int 
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 -- | Represents a cell including whether it is enabled and its action.
 data Cell = MkCell Bool Action
