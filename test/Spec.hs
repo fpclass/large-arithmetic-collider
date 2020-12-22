@@ -46,6 +46,10 @@ instance HasOperand Action where
 instance HasOperand Cell where 
     getOperand (MkCell _ a) = getOperand a
 
+-- | `getAction` @cell@ extracts the `Action` from a `Cell`.
+getAction :: Cell -> Action
+getAction (MkCell _ a) = a
+
 --------------------------------------------------------------------------------
 
 -- | `natural` randomly generates a positive integer up to 255.
@@ -269,7 +273,7 @@ prop_states_sameAction = property $ do
     -- use states to get a list of cell states
     let results = states c
 
-    -- check that there is at least one solution
+    -- check that there is at least one result
     length results /== 0
 
     -- for every item in the result, check that its action is the same
@@ -285,6 +289,9 @@ prop_states_noDuplicates = property $ do
 
     -- use states to get a list of cell states
     let results = states c
+
+    -- check that there is at least one result
+    length results /== 0
 
     -- check that the result contains no duplicates by comparing it to a
     -- list with all duplicates removed
@@ -305,6 +312,65 @@ statesTests = testGroup "states"
             "states returns a list which contains no duplicates"
             "prop_states_noDuplicates"
             prop_states_noDuplicates
+    ]
+
+--------------------------------------------------------------------------------
+
+prop_candidates_length :: Property
+prop_candidates_length = property $ do 
+    -- generate a list of random cells
+    cells <- forAll $ Gen.list (Range.constant 0 10) cell
+
+    -- print the result of candidates in case of test failure
+    annotateShow (candidates cells) 
+
+    -- check that there are as many results as we would expect
+    length (candidates cells) === 2^(length cells)
+
+-- | `prop_candidates_actions` checks that all candidates returned by
+-- `candidates` have the same actions as the input.
+prop_candidates_actions :: Property
+prop_candidates_actions = property $ do 
+    -- generate a list of random cells
+    cells <- forAll $ Gen.list (Range.constant 0 10) cell
+
+    -- check that there is at least one result
+    length (candidates cells) /== 0
+
+    -- check that all resulting lists have the same actions
+    forM_ (candidates cells) $ \candidate -> 
+        map getAction candidate === map getAction cells
+
+-- | `prop_candidates_noDuplicates` checks that `candidates` returns no
+-- duplicate candidates.
+prop_candidates_noDuplicates :: Property
+prop_candidates_noDuplicates = property $ do 
+    -- generate a list of random cells
+    cells <- forAll $ Gen.list (Range.constant 0 10) cell
+
+    -- check that there is at least one result
+    length (candidates cells) /== 0
+
+    -- check that there are no duplicates
+    candidates cells === nub (candidates cells)
+
+candidatesTests :: TestTree
+candidatesTests = testGroup "candidates"
+    [
+        testCase "candidates [] has a candidate solution" $
+            candidates [] @?= [[]]
+    ,   testProperty
+            "candidates returns 2^n results for n inputs"
+            "prop_candidates_length"
+            prop_candidates_length
+    ,   testProperty
+            "candidates have the same actions as the input"
+            "prop_candidates_actions"
+            prop_candidates_actions
+    ,   testProperty
+            "candidates returns no duplicates"
+            "prop_candidates_noDuplicates"
+            prop_candidates_noDuplicates
     ]
 
 --------------------------------------------------------------------------------
@@ -435,6 +501,7 @@ tests = localOption (HedgehogShowReplay True)
         ,   applyTests
         ,   resultTests
         ,   statesTests
+        ,   candidatesTests
         ,   solveRowTests
         ,   solveTests
         ,   rotationsTests
