@@ -84,7 +84,7 @@ disCell = MkCell False <$> action
 -- may not be solvable if `result` doesn't work correctly.
 row :: MonadGen m => m Row 
 row = do
-    cells <- Gen.list (Range.constant 0 100) cell
+    cells <- Gen.list (Range.constant 0 10) cell
     pure $ MkRow (result cells) [MkCell False op | MkCell _ op <- cells]
 
 --------------------------------------------------------------------------------
@@ -411,7 +411,7 @@ prop_solveRow_evaluate = property $ do
         result cs === t
 
 solveRowTests :: TestTree 
-solveRowTests = localOption (HedgehogTestLimit $ Just 25) $ testGroup "solveRow" 
+solveRowTests = testGroup "solveRow" 
     [
         testCase "the solution for Row 0 [] is Row 0 []" $ 
             solveRow (MkRow 0 []) @?= [MkRow 0 []]
