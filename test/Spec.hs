@@ -3,7 +3,8 @@
 -- Coursework 1: Large Arithmetic Collider                                    --
 --------------------------------------------------------------------------------
 
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 --------------------------------------------------------------------------------
@@ -24,6 +25,7 @@ import Test.Tasty.Hedgehog as H
 import Test.Tasty.Runners.AntXML
 
 import Hedgehog hiding (Action, eval)
+import Hedgehog.Internal.Config (UseColor(..))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -32,7 +34,9 @@ import Level
 
 --------------------------------------------------------------------------------
 
+-- | A convenience class for types which have operands: actions or cells.
 class HasOperand a where
+    -- | Retrieves the operand of the argument.
     getOperand :: a -> Int 
 
 instance HasOperand Action where 
@@ -44,9 +48,9 @@ instance HasOperand Cell where
 
 --------------------------------------------------------------------------------
 
--- | `natural` randomly generates a positive integer.
+-- | `natural` randomly generates a positive integer up to 255.
 natural :: (MonadGen m, Integral a, Bounded a) => m a
-natural = Gen.integral $ Range.constant 0 maxBound
+natural = Gen.integral $ Range.constant 0 255
 
 -- | `action` randomly generates an `Action`.
 action :: MonadGen m => m Action 
@@ -135,9 +139,13 @@ prop_eval_subs = property $ do
 evalTests :: TestTree 
 evalTests = testGroup "eval" 
     [
-        testProperty "Add adds the number to the accumulator" $
+        testProperty 
+            "eval adds the operand to the accumulator for Add"
+            "prop_eval_adds"
             prop_eval_adds
-    ,   testProperty "Sub subtracts the number from the accumulator" $ 
+    ,   testProperty 
+            "eval subtracts the operand from the accumulator for Sub"
+            "prop_eval_subs"
             prop_eval_subs
     ]
 
@@ -169,11 +177,17 @@ prop_apply_sub = property $ do
 applyTests :: TestTree 
 applyTests = testGroup "apply"
     [
-        testProperty "Disabled cells have no effect on the accumulator" $ 
+        testProperty 
+            "Disabled cells have no effect on the accumulator"
+            "prop_apply_disabled"
             prop_apply_disabled
-    ,   testProperty "Enabled cells have the expected effect (Add)" $ 
+    ,   testProperty 
+            "Enabled cells have the expected effect (Add)"
+            "prop_apply_add"
             prop_apply_add
-    ,   testProperty "Enabled cells have the expected effect (Sub)" $ 
+    ,   testProperty 
+            "Enabled cells have the expected effect (Sub)"
+            "prop_apply_sub"
             prop_apply_sub 
     ]
 
@@ -215,13 +229,21 @@ resultTests = testGroup "result"
     [
         testCase "returns 0 for the empty list" $ 
             result [] @?= 0
-    ,   testProperty "returns 0 if all cells are disabled" $
+    ,   testProperty 
+            "returns 0 if all cells are disabled"
+            "prop_result_disabled"
             prop_result_disabled
-    ,   testProperty "returns the sum if all cells are add cells" $ 
+    ,   testProperty 
+            "returns the sum if all cells are add cells"
+            "prop_result_add"
             prop_result_add
-    ,   testProperty "returns the sum*(-1) if all cells are sub cells" $ 
+    ,   testProperty 
+            "returns the sum*(-1) if all cells are sub cells"
+            "prop_result_sub"
             prop_result_sub
-    ,   testProperty "works correctly with a mix of cell types" $
+    ,   testProperty 
+            "works correctly with a mix of cell types"
+            "prop_result_mix"
             prop_result_mix
     ]
 
@@ -267,11 +289,16 @@ solveRowTests = localOption (HedgehogTestLimit $ Just 25) $ testGroup "solveRow"
     [
         testCase "the solution for Row 0 [] is Row 0 []" $ 
             solveRow (MkRow 0 []) @?= [MkRow 0 []]
-    ,   testProperty "finds at least one result for rows that have a solution" $ 
+    ,   testProperty 
+            "finds at least one result for rows that have a solution"
+            "prop_solveRow_solvable"
             prop_solveRow_solvable
-    ,   testProperty "all results have the same target and number of cells as the input" $
+    ,   testProperty 
+            "all results have the same target and number of cells as the input"
+            "prop_solveRow_sameTarget"
             prop_solveRow_sameTarget
-    ,   testProperty "all results evaluate to to the target (via result)" $
+    ,   testProperty "all results evaluate to to the target (via result)"
+            "prop_solveRow_evaluate"
             prop_solveRow_evaluate
     ]
 
@@ -341,7 +368,9 @@ stepsTests =
 --------------------------------------------------------------------------------
 
 tests :: TestTree
-tests = localOption (HedgehogShowReplay False) $ testGroup "Game" 
+tests = localOption (HedgehogShowReplay True) 
+      $ localOption (HedgehogUseColor EnableColor)
+      $ testGroup "Game" 
     [
         evalTests
     ,   applyTests

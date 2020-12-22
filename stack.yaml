@@ -39,7 +39,10 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+- hedgehog-1.0.3@sha256:dd9a25bf904fe444d5de471d0933261ef2c9a1110330460e037e0fef86fac89e,4622
+- git: https://github.com/mbg/tasty-hedgehog
+  commit: ec346123d807867385231c7032e771ef3610a143
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
