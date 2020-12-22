@@ -144,11 +144,11 @@ evalTests :: TestTree
 evalTests = testGroup "eval" 
     [
         testProperty 
-            "eval adds the operand to the accumulator for Add"
+            "adds the operand to the accumulator for Add"
             "prop_eval_adds"
             prop_eval_adds
     ,   testProperty 
-            "eval subtracts the operand from the accumulator for Sub"
+            "subtracts the operand from the accumulator for Sub"
             "prop_eval_subs"
             prop_eval_subs
     ]
@@ -182,15 +182,15 @@ applyTests :: TestTree
 applyTests = testGroup "apply"
     [
         testProperty 
-            "Disabled cells have no effect on the accumulator"
+            "disabled cells have no effect on the accumulator"
             "prop_apply_disabled"
             prop_apply_disabled
     ,   testProperty 
-            "Enabled cells have the expected effect (Add)"
+            "enabled cells have the expected effect (Add)"
             "prop_apply_add"
             prop_apply_add
     ,   testProperty 
-            "Enabled cells have the expected effect (Sub)"
+            "enabled cells have the expected effect (Sub)"
             "prop_apply_sub"
             prop_apply_sub 
     ]
@@ -301,15 +301,15 @@ statesTests :: TestTree
 statesTests = testGroup "states"
     [
         testProperty
-            "states returns a list with exactly two elements"
+            "returns a list with exactly two elements"
             "prop_states_size"
             prop_states_length
     ,   testProperty
-            "states returns a list where all cells have the same action"
+            "returns a list where all cells have the same action"
             "prop_states_sameAction"
             prop_states_sameAction
     ,   testProperty
-            "states returns a list which contains no duplicates"
+            "returns a list which contains no duplicates"
             "prop_states_noDuplicates"
             prop_states_noDuplicates
     ]
@@ -360,7 +360,7 @@ candidatesTests = testGroup "candidates"
         testCase "candidates [] has a candidate solution" $
             candidates [] @?= [[]]
     ,   testProperty
-            "candidates returns 2^n results for n inputs"
+            "returns 2^n results for n inputs"
             "prop_candidates_length"
             prop_candidates_length
     ,   testProperty
@@ -368,7 +368,7 @@ candidatesTests = testGroup "candidates"
             "prop_candidates_actions"
             prop_candidates_actions
     ,   testProperty
-            "candidates returns no duplicates"
+            "returns no duplicates"
             "prop_candidates_noDuplicates"
             prop_candidates_noDuplicates
     ]
@@ -413,14 +413,14 @@ prop_solveRow_evaluate = property $ do
 solveRowTests :: TestTree 
 solveRowTests = testGroup "solveRow" 
     [
-        testCase "the solution for Row 0 [] is Row 0 []" $ 
+        testCase "the solution for MkRow 0 [] is MkRow 0 []" $ 
             solveRow (MkRow 0 []) @?= [MkRow 0 []]
     ,   testProperty 
             "finds at least one result for rows that have a solution"
             "prop_solveRow_solvable"
             prop_solveRow_solvable
     ,   testProperty 
-            "all results have the same target and number of cells as the input"
+            "results have the same row target and number of cells"
             "prop_solveRow_sameTarget"
             prop_solveRow_sameTarget
     ,   testProperty "all results evaluate to to the target (via result)"
@@ -434,15 +434,15 @@ solveTests :: TestTree
 solveTests = withResource (loadSmplGrids >>= \grids -> pure $ zip grids (map solve grids)) (const $ pure ()) $ 
     \getResults -> testGroup "solve" 
         [
-            testCase "returned grids are structurally the same as the inputs (same dimensions and cells)" $
+            testCase "results have the same structure as the inputs" $
                 getResults >>= \results -> mapM_ (\(g,sols) -> mapM_ (\s -> 
                     structureEq g s @?= True) sols
                 ) results 
-        ,   testCase "returned grids whose rows result in their targets (via result)" $ 
+        ,   testCase "rows of solutions result in their targets (via result)" $ 
                 getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid _ rs) -> 
                     mapM_ (\(MkRow t cs) -> t @?= result cs) rs) sols
                 ) (map snd results)
-        ,   testCase "returned grids whose columns result in their targets (via result)" $
+        ,   testCase "columns of solutions result in their targets (via result)" $
                 getResults >>= \results -> mapM_ (\sols -> mapM_ (\(MkGrid cs rs) -> 
                     mapM_ (\(t,col) -> t @?= result col) $ 
                         zip cs $ transpose (map (\(MkRow _ cells) -> cells) rs)) sols
