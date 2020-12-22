@@ -670,14 +670,15 @@ tests = localOption (HedgehogShowReplay True)
       $ localOption (HedgehogUseColor EnableColor)
       $ testGroup "Game" 
         [   evalTests
-        ,   applyTests
-        ,   resultTests
+        ,   after AllSucceed "Game.eval" applyTests
+        ,   after AllSucceed "Game.apply" resultTests
         ,   statesTests
-        ,   candidatesTests
-        ,   solveRowTests
-        ,   solveTests
-        ,   rotationsTests
-        ,   stepsTests
+        ,   after AllSucceed "Game.states" candidatesTests
+        ,   after AllSucceed "Game.result" $
+            after AllSucceed "Game.states" solveRowTests
+        ,   after AllSucceed "Game.solveRow" solveTests
+        ,   after AllSucceed "Game.result" rotationsTests
+        ,   after AllSucceed "Game.rotations" stepsTests
         ]
 
 --------------------------------------------------------------------------------
