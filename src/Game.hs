@@ -28,37 +28,112 @@ data Grid = MkGrid [Int] [Row]
 
 --------------------------------------------------------------------------------
 
--- | `eval` @action total@ applies @action@ to the running @total@.
+-- | `eval` @action total@ applies @action@ to the running @total@. 
+-- For example:
+--
+-- >>> eval (Add 5) 3
+-- 8
+--
+-- >>> eval (Sub 1) 3
+-- 2
 eval :: Action -> Int -> Int 
 eval = undefined
 
 -- | `apply` @cell total@ applies the action of @cell@ to the running @total@ 
--- if @cell@ is enabled.
+-- if @cell@ is enabled. For example:
+--
+-- >>> apply (MkCell True (Add 5)) 3
+-- 8
+--
+-- >>> apply (MkCell False (Add 5)) 3
+-- 3
 apply :: Cell -> Int -> Int 
 apply = undefined
 
 -- | `result` @cells@ calculates the total produced by the actions of all 
--- enabled cells in @cells@ starting from 0.
+-- enabled cells in @cells@ starting from 0. For example:
+--
+-- >>> result []
+-- 0
+--
+-- >>> result [MkCell True (Add 5), MkCell False (Add 5), MkCell True (Sub 1)]
+-- 4
 result :: [Cell] -> Int 
 result = undefined 
 
--- | `solveRow` @row@ finds solutions for @row@.
+-- | `states` @cell@ is a function which returns a list with _exactly_ two
+-- elements that represent the two different states @cell@ can be in. For
+-- example:
+--
+-- >>> states (MkCell False (Add 5))
+-- [MkCell True (Add 5), MkCell False (Add 5)]
+states :: Cell -> [Cell]
+states = undefined
+
+-- | `candidates` @cells@ is a function which, given a list of cells in a row,
+-- produces all possible combinations of states for those cells. For example:
+-- 
+-- >>> candidates [MkCell False (Add 5), MkCell False (Sub 1)]
+-- [ [MkCell False (Add 5), MkCell False (Sub 1)]
+-- , [MkCell False (Add 5), MkCell True (Sub 1)]
+-- , [MkCell True (Add 5), MkCell False (Sub 1)]
+-- , [MkCell True (Add 5), MkCell True (Sub 1)]
+-- ]
+candidates :: [Cell] -> [[Cell]]
+candidates = undefined
+
+-- | `solveRow` @row@ finds solutions for @row@. For example:
+--
+-- >>> solveRow (MkRow 5 [MkCell False (Add 5), MkCell False (Sub 1)])
+-- [[MkCell True (Add 5), MkCell False (Sub 1)]]
+--
+-- >>> solveRow (MkRow 5 [MkCell False (Add 5), MkCell False (Add 5)])
+-- [ MkRow 5 [MkCell True (Add 5), MkCell False (Add 5)] 
+-- , MkRow 5 [MkCell False (Add 5), MkCell True (Add 5)]
+-- ]
 solveRow :: Row -> [Row]
 solveRow = undefined
 
--- | `solve` @grid@ finds all solutions for @grid@.
+-- | `solve` @grid@ finds all solutions for @grid@. For example:
+--
+-- >>> let row0 = MkRow 3 [MkCell False (Add 3), MkCell False (Add 5)]
+-- >>> let row1 = MkRow 4 [MkCell False (Add 2), MkCell False (Add 2)]
+-- >>> solve (MkGrid [5, 2] [row0, row1])
+-- [ MkGrid [5,2] [ MkRow 3 [MkCell True (Add 3), MkCell False (Add 5)]
+--                , MkRow 4 [MkCell True (Add 2), MkCell True (Add 2)]
+--                ]
+-- ]
 solve :: Grid -> [Grid]
 solve = undefined
 
 -- | `rotations` @grid@ returns a list of grids containing all possible ways 
 -- to rotate @grid@. This means the resulting list should normally have 
--- rows + columns many elements.
+-- rows + columns many elements. For example:
+--
+-- >>> let row0 = MkRow 3 [MkCell False (Add 3), MkCell False (Add 5)]
+-- >>> let row1 = MkRow 4 [MkCell False (Add 2), MkCell False (Add 2)]
+-- >>> rotations (MkGrid [5, 2] [row0, row1])
+-- [ MkGrid [5,2] [ MkRow 3 [MkCell False (Add 5), MkCell False (Add 3)]
+--                , MkRow 4 [MkCell False (Add 2), MkCell False (Add 2)]
+--                ]
+-- , MkGrid [5,2] [ MkRow 3 [MkCell False (Add 3), MkCell False (Add 5)]
+--                , MkRow 4 [MkCell False (Add 2), MkCell False (Add 2)]
+--                ]
+-- , MkGrid [5,2] [ MkRow 3 [MkCell False (Add 2), MkCell False (Add 5)]
+--                , MkRow 4 [MkCell False (Add 3), MkCell False (Add 2)]
+--                ]
+-- , MkGrid [5,2] [ MkRow 3 [MkCell False (Add 3), MkCell False (Add 2)]
+--                , MkRow 4 [MkCell False (Add 2), MkCell False (Add 5)]
+--                ]
+-- ]
 rotations :: Grid -> [Grid]
 rotations = undefined
 
 -- | `steps` @grid@ finds the sequence of rotations that lead to a solution 
 -- for @grid@ in the fewest number of rotations. The resulting list includes 
--- the solution as the last element.  
+-- the solution as the last element. You may assume that this function will
+-- never be called on a @grid@ for which there are solutions returned by
+-- `solve`. 
 steps :: Grid -> [Grid]
 steps = undefined
 
