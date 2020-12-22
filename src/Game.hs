@@ -36,6 +36,10 @@ data Grid = MkGrid [Int] [Row]
 --
 -- >>> eval (Sub 1) 3
 -- 2
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 eval :: Action -> Int -> Int 
 eval = undefined
 
@@ -47,6 +51,10 @@ eval = undefined
 --
 -- >>> apply (MkCell False (Add 5)) 3
 -- 3
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 apply :: Cell -> Int -> Int 
 apply = undefined
 
@@ -58,6 +66,10 @@ apply = undefined
 --
 -- >>> result [MkCell True (Add 5), MkCell False (Add 5), MkCell True (Sub 1)]
 -- 4
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 result :: [Cell] -> Int 
 result = undefined 
 
@@ -67,6 +79,10 @@ result = undefined
 --
 -- >>> states (MkCell False (Add 5))
 -- [MkCell True (Add 5), MkCell False (Add 5)]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 states :: Cell -> [Cell]
 states = undefined
 
@@ -79,6 +95,10 @@ states = undefined
 -- , [MkCell True (Add 5), MkCell False (Sub 1)]
 -- , [MkCell True (Add 5), MkCell True (Sub 1)]
 -- ]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 candidates :: [Cell] -> [[Cell]]
 candidates = undefined
 
@@ -91,6 +111,10 @@ candidates = undefined
 -- [ MkRow 5 [MkCell True (Add 5), MkCell False (Add 5)] 
 -- , MkRow 5 [MkCell False (Add 5), MkCell True (Add 5)]
 -- ]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 solveRow :: Row -> [Row]
 solveRow = undefined
 
@@ -103,6 +127,10 @@ solveRow = undefined
 --                , MkRow 4 [MkCell True (Add 2), MkCell True (Add 2)]
 --                ]
 -- ]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 solve :: Grid -> [Grid]
 solve = undefined
 
@@ -126,6 +154,10 @@ solve = undefined
 --                , MkRow 4 [MkCell False (Add 2), MkCell False (Add 5)]
 --                ]
 -- ]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 rotations :: Grid -> [Grid]
 rotations = undefined
 
@@ -133,7 +165,23 @@ rotations = undefined
 -- for @grid@ in the fewest number of rotations. The resulting list includes 
 -- the solution as the last element. You may assume that this function will
 -- never be called on a @grid@ for which there are solutions returned by
--- `solve`. 
+-- `solve`. The states of intermediate grids in the resulting list
+-- are irrelevant - only the ones of the final grid need to be set correctly.
+--
+-- >>> let row0 = MkRow 3 [MkCell False (Add 2), MkCell False (Add 3)]
+-- >>> let row1 = MkRow 4 [MkCell False (Add 5), MkCell False (Add 2)]
+-- >>> steps (MkGrid [5, 2] [row0, row1])
+-- [ MkGrid [5, 2] [ MkRow 3 [ MkCell False (Add 5), MkCell False (Add 3)] 
+--                 , MkRow 4 [ MkCell False (Add 2), MkCell False (Add 2)]
+--                 ]  
+-- , MkGrid [5, 2] [ MkRow 3 [ MkCell True (Add 3), MkCell False (Add 5)] 
+--                 , MkRow 4 [ MkCell True (Add 2), MkCell True (Add 2)]
+--                 ] 
+-- ]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
 steps :: Grid -> [Grid]
 steps = undefined
 
