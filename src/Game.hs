@@ -26,6 +26,10 @@ data Row = MkRow Int [Cell]
 data Grid = MkGrid [Int] [Row]
     deriving (Eq, Show)
 
+-- | Enumerates directions in which lists can be rotated.
+data Direction = L | R
+    deriving (Eq, Show)
+
 --------------------------------------------------------------------------------
 
 -- | `eval` @action total@ applies @action@ to the running @total@. 
@@ -133,6 +137,27 @@ solveRow = undefined
 ---------------------------------------
 solve :: Grid -> [Grid]
 solve = undefined
+
+-- | `rotate` @direction list@ rotates the items in @list@ to the left or
+-- right depending on the value of @direction@. For example:
+--
+-- >>> rotate L [1,2,3]
+-- [2,3,1]
+--
+-- >>> rotate R [1,2,3]
+-- [3,1,2]
+--
+-- >>> rotate L []
+-- []
+--
+-- >>> rotate R [1]
+-- [1]
+--
+---------------------------------------
+-- [Add your explanation of how your implementation works here]
+---------------------------------------
+rotate :: Direction -> [a] -> [a]
+rotate = undefined
 
 -- | `rotations` @grid@ returns a list of grids containing all possible ways 
 -- to rotate @grid@. This means the resulting list should normally have 

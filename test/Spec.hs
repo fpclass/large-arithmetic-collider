@@ -591,6 +591,85 @@ solveTests = withResource
 
 --------------------------------------------------------------------------------
 
+-- | `oppositeDir` @direction@ returns the opposite of @direction@.
+oppositeDir :: Direction -> Direction
+oppositeDir L = R 
+oppositeDir R = L
+
+-- | `prop_rotate_singleton` checks that rotating a singleton list has no 
+-- effect and just returns the singleton list.
+prop_rotate_singleton :: Property
+prop_rotate_singleton = property $ do 
+    -- generate an element
+    (x :: Int) <- forAll natural
+
+    -- pick a direction
+    dir <- forAll $ Gen.element [L, R]
+
+    -- rotating a singleton list has no effect
+    rotate dir [x] === [x]
+
+-- | `prop_rotate` checks that for a given list, rotating it in one direction
+-- and then in the other afterwards yields the same list we started with.
+prop_rotate :: Property
+prop_rotate = property $ do
+    -- generate a list
+    (xs :: [Int]) <- forAll $ Gen.list (Range.constant 0 100) natural
+
+    -- pick an initial direction
+    dir <- forAll $ Gen.element [L, R]
+
+    -- rotating the list in one direction and then rotating it back into the
+    -- opposite direction should take us to where we started
+    rotate (oppositeDir dir) (rotate dir xs) === xs
+
+-- | `prop_rotate_left` checks that `rotate` @L@ has the desired effects.
+prop_rotate_left :: Property 
+prop_rotate_left = property $ do
+    -- generate a list
+    (xs :: [Int]) <- forAll $ Gen.list (Range.constant 2 100) natural
+
+    -- check that left rotations have the desired effects
+    last (rotate L xs) === head xs
+    init (rotate L xs) === tail xs 
+
+-- | `prop_rotate_right` checks that `rotate` @R@ has the desired effects.
+prop_rotate_right :: Property
+prop_rotate_right = property $ do
+    -- generate a list
+    (xs :: [Int]) <- forAll $ Gen.list (Range.constant 2 100) natural
+
+    -- check that right rotations have the desired effects
+    head (rotate R xs) === last xs
+    tail (rotate R xs) === init xs 
+
+rotateTests :: TestTree
+rotateTests = testGroup "rotate" $
+    [
+        testCase "rotate L [] = []" $
+            rotate L [] @?= ([] :: [Int])
+    ,   testCase "rotate R [] = []" $
+            rotate R [] @?= ([] :: [Int])
+    ,   testProperty
+            "rotate dir [x] = [x]"
+            "prop_rotate_singleton"
+            prop_rotate_singleton
+    ,   testProperty
+            "rotating in one direction, then the other yields the input"
+            "prop_rotate"
+            prop_rotate
+    ,   testProperty
+            "rotating left works correctly"
+            "prop_rotate_left"
+            prop_rotate_left
+    ,   testProperty
+            "rotating right works correctly"
+            "prop_rotate_right"
+            prop_rotate_right
+    ]
+
+--------------------------------------------------------------------------------
+
 -- | `prop_rotations_length` tests that grids with at least 2x2 cells have
 -- rows + columns many rotations
 prop_rotations_length :: Property
@@ -677,6 +756,7 @@ tests = localOption (HedgehogShowReplay True)
         ,   after AllSucceed "Game.result" $
             after AllSucceed "Game.states" solveRowTests
         ,   after AllSucceed "Game.solveRow" solveTests
+        ,   rotateTests
         ,   after AllSucceed "Game.result" rotationsTests
         ,   after AllSucceed "Game.rotations" stepsTests
         ]
