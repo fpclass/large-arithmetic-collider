@@ -249,6 +249,66 @@ resultTests = testGroup "result"
 
 --------------------------------------------------------------------------------
 
+-- | `prop_states_length` tests that `states` returns a list with exactly
+-- two elements.
+prop_states_length :: Property
+prop_states_length = property $ do 
+    -- generate a random cell
+    c <- forAll cell
+
+    -- check that the length of the resulting list is exactly 2
+    length (states c) === 2
+
+-- | `prop_states_sameAction` tests that `states` returns a list where all
+-- of the results have the same action as the input cell.
+prop_states_sameAction :: Property 
+prop_states_sameAction = property $ do
+    -- generate a random cell
+    c@(MkCell _ a) <- forAll cell 
+
+    -- use states to get a list of cell states
+    let results = states c
+
+    -- check that there is at least one solution
+    length results /== 0
+
+    -- for every item in the result, check that its action is the same
+    forM_ results $ \(MkCell _ a') -> a' === a
+
+-- | `prop_states_noDuplicates` checks that `states` returns a list with no
+-- duplicates. Combined with the other properties, this enforces that one
+-- resulting cell is enabled and the other disabled.
+prop_states_noDuplicates :: Property
+prop_states_noDuplicates = property $ do 
+    -- generate a random cell
+    c <- forAll cell 
+
+    -- use states to get a list of cell states
+    let results = states c
+
+    -- check that the result contains no duplicates by comparing it to a
+    -- list with all duplicates removed
+    results === nub results
+
+statesTests :: TestTree
+statesTests = testGroup "states"
+    [
+        testProperty
+            "states returns a list with exactly two elements"
+            "prop_states_size"
+            prop_states_length
+    ,   testProperty
+            "states returns a list where all cells have the same action"
+            "prop_states_sameAction"
+            prop_states_sameAction
+    ,   testProperty
+            "states returns a list which contains no duplicates"
+            "prop_states_noDuplicates"
+            prop_states_noDuplicates
+    ]
+
+--------------------------------------------------------------------------------
+
 -- | `prop_solveRow_solvable` tests that `solveRow` produces at least some
 -- solution for a `Row` that is solvable (see note about `row`).
 prop_solveRow_solvable :: Property 
@@ -371,15 +431,15 @@ tests :: TestTree
 tests = localOption (HedgehogShowReplay True) 
       $ localOption (HedgehogUseColor EnableColor)
       $ testGroup "Game" 
-    [
-        evalTests
-    ,   applyTests
-    ,   resultTests
-    ,   solveRowTests
-    ,   solveTests
-    ,   rotationsTests
-    ,   stepsTests
-    ]
+        [   evalTests
+        ,   applyTests
+        ,   resultTests
+        ,   statesTests
+        ,   solveRowTests
+        ,   solveTests
+        ,   rotationsTests
+        ,   stepsTests
+        ]
 
 --------------------------------------------------------------------------------
 
