@@ -25,7 +25,7 @@ import Test.Tasty.Hedgehog as H
 import Test.Tasty.Runners.AntXML
 
 import Hedgehog hiding (Action, eval)
-import Hedgehog.Internal.Config (UseColor(..))
+import Hedgehog.Internal.Show (showPretty)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
@@ -700,6 +700,56 @@ prop_rotations_structure = property $ do
     forM_ (rotations input) $ \rotation ->
         diff rotation rotationEq input 
 
+-- | `unsuitableRotations` @grid@ detects whether `rotations` of @grid@ would
+-- return rotations that are unsuitable for the `prop_rotations_different` 
+-- property test.
+unsuitableRotations :: Grid -> Bool 
+unsuitableRotations (MkGrid _ rs) = 
+    any unsuitableRow rs || any unsuitable (transpose $ map getCells rs)
+    where unsuitableRow = unsuitable . getCells
+          unsuitable cs = head cs == last cs
+
+-- | `checkRotations` @original rotated@ checks that at least one of the rows
+-- in @rotated@ is a rotation from the @original@. This check uses the 
+-- `rotate` function that students need to implement, so its results may be
+-- unreliable if `rotate` is implemented incorrectly.
+checkRotations :: [Row] -> [Row] -> Bool
+checkRotations rs rs' =
+    any (\(xs,xs') -> rotate L xs == xs') (rows ++ columns)
+    where cs = map getCells rs 
+          cs' = map getCells rs'
+          rows = zip cs cs' 
+          columns = zip (transpose cs) (transpose cs')
+
+-- | `prop_rotations_rotated` checks that every grid returned by `rotations`
+-- has at least one rotation according to `rotate`.
+prop_rotations_rotated :: Property
+prop_rotations_rotated = property $ do 
+    -- generate a random grid with at least 2x2 cells
+    input@(MkGrid _ rows) <- forAll $ grid (Range.constant 2 10)
+
+    -- check that the generated grid is suitable for this test:
+    -- if any of the rows or columns contain the same actions in positions
+    -- that would be rotated, then a rotation would not have any observable 
+    -- effect and we discard the grid
+    when (unsuitableRotations input) discard
+
+    -- classify the grid
+    classify "small grids" $ gridSize input < 50
+    classify "large grids" $ gridSize input >= 50 
+
+    -- check that each of the returned grids has at least one rotation
+    forM_ (rotations input) $ \rotation@(MkGrid _ rs) -> 
+        unless (checkRotations rows rs) $ do 
+            -- show the result that failed the rotations check
+            annotate (
+                "The following result is not a valid rotation:\n" <> 
+                showPretty rotation
+             )
+            
+            -- fail the test
+            failure
+
 rotationsTests :: TestTree 
 rotationsTests = testGroup "rotations"
     [
@@ -711,6 +761,10 @@ rotationsTests = testGroup "rotations"
             "returns grids with the same structure as the input"
             "prop_rotations_structure"
             prop_rotations_structure
+    ,   testProperty
+            "returns grids where a row/column has been rotated"
+            "prop_rotations_rotated"
+            prop_rotations_rotated
     ]
 
 --------------------------------------------------------------------------------
@@ -756,7 +810,8 @@ tests = localOption (HedgehogShowReplay True)
             after AllSucceed "Game.states" solveRowTests
         ,   after AllSucceed "Game.solveRow" solveTests
         ,   rotateTests
-        ,   after AllSucceed "Game.result" rotationsTests
+        ,   after AllSucceed "Game.result" $
+            after AllSucceed "Game.rotate" rotationsTests
         ,   after AllSucceed "Game.rotations" stepsTests
         ]
 
