@@ -17,11 +17,11 @@ packages:
     git: https://github.com/mbg/tasty-hedgehog
     pantry-tree:
       size: 916
-      sha256: 61e027d8c3a3a7906dc401808b64f9f8508aaeeeb420b6f2e843aee9cd8fcd92
-    commit: ec346123d807867385231c7032e771ef3610a143
+      sha256: 55192af6022442573335d36a24af8dbf14d2c4b5e08ae666d446ad966bd4bbf8
+    commit: 03a00141e3cd8e3bf93f85d26e93649799c0d7b2
   original:
     git: https://github.com/mbg/tasty-hedgehog
-    commit: ec346123d807867385231c7032e771ef3610a143
+    commit: 03a00141e3cd8e3bf93f85d26e93649799c0d7b2
 snapshots:
 - completed:
     size: 545658

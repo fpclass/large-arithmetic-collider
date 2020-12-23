@@ -746,7 +746,6 @@ stepsTests =
 
 tests :: TestTree
 tests = localOption (HedgehogShowReplay True) 
-      $ localOption (HedgehogUseColor EnableColor)
       $ testGroup "Game" 
         [   evalTests
         ,   after AllSucceed "Game.eval" applyTests

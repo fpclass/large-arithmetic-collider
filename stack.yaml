@@ -42,7 +42,7 @@ packages:
 extra-deps:
 - hedgehog-1.0.3@sha256:dd9a25bf904fe444d5de471d0933261ef2c9a1110330460e037e0fef86fac89e,4622
 - git: https://github.com/mbg/tasty-hedgehog
-  commit: ec346123d807867385231c7032e771ef3610a143
+  commit: 03a00141e3cd8e3bf93f85d26e93649799c0d7b2
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
