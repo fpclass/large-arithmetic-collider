@@ -517,7 +517,7 @@ prop_solve_structure = property $ do
     classify "small grids" $ gridSize input < 50
     classify "large grids" $ gridSize input >= 50
 
-    -- generate the solutions and classify them
+    -- generate the solutions
     let solutions = solve input 
 
     -- there should be at least one solution
@@ -538,7 +538,7 @@ prop_solve_rows = property $ do
     classify "small grids" $ gridSize input < 50
     classify "large grids" $ gridSize input >= 50
 
-    -- generate the solutions and classify them
+    -- generate the solutions
     let solutions = solve input 
 
     -- there should be at least one solution
@@ -560,7 +560,7 @@ prop_solve_columns = property $ do
     classify "small grids" $ gridSize input < 50
     classify "large grids" $ gridSize input >= 50
 
-    -- generate the solutions and classify them
+    -- generate the solutions
     let solutions = solve input 
 
     -- there should be at least one solution
