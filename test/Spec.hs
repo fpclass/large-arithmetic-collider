@@ -15,7 +15,7 @@ module Main ( main ) where
 
 import Control.Monad
 
-import Data.List (nub, transpose, sort)
+import Data.List
 
 import Test.Tasty
 import Test.Tasty.Ingredients
@@ -54,14 +54,24 @@ getAction (MkCell _ a) = a
 getCells :: Row -> [Cell]
 getCells (MkRow _ cs) = cs
 
--- | `disable` @cell@ marks @cell@ as disabled.
-disable :: Cell -> Cell
-disable (MkCell _ a) = MkCell False a
-
 -- | `gridSize` @grid@ calculates how many cells there are in a grid (for
 -- classification purposes).
 gridSize :: Grid -> Int 
 gridSize (MkGrid ts rs) = length ts * length rs
+
+-- | A convenience class for types which have cells that can be disabled.
+class CanDisable a where
+    -- | `disable` @item@ marks all cells in @item@ as disabled.
+    disable :: a -> a
+
+instance CanDisable Cell where 
+    disable (MkCell _ a) = MkCell False a
+
+instance CanDisable Row where 
+    disable (MkRow t cs) = MkRow t (map disable cs)
+
+instance CanDisable Grid where 
+    disable (MkGrid cs rs) = MkGrid cs (map disable rs)
 
 --------------------------------------------------------------------------------
 
@@ -769,31 +779,61 @@ rotationsTests = testGroup "rotations"
 
 --------------------------------------------------------------------------------
 
+-- | `followsFrom` @grid parent@ determines whether @grid@ is a grid that is
+-- a rotation of @parent@ (via `rotations`).
+followsFrom :: Grid -> Grid -> Bool
+followsFrom step = (disable step `elem`) . map disable . rotations
+
 stepsTests :: TestTree 
 stepsTests = 
     withResource 
-        (loadAdvGrids >>= \grids -> pure $ zip [1..] (map steps grids)) 
+        (loadAdvGrids >>= \grids -> pure $ zip3 [1..] grids (map steps grids)) 
         (const $ pure ()) $ 
     \getResults -> testGroup "steps" 
         [
-            testCaseSteps "returns results for all test grids" $ \step -> do 
-                results <- getResults
-                forM_ results $ \(idx,r) -> 
-                    when (null r) $ do 
-                        step ("advanced grid #" <> show (idx :: Int))
-                        assertFailure "grid has no results"
-        ,   testCaseSteps "results are all unique" $ \step -> do
-                results <- getResults
-                forM_ results $ \(idx,r) -> 
-                    when (length r /= length (nub r)) $ do
-                        step ("advanced grid #" <> show (idx :: Int))
-                        assertFailure "solve returns duplicate solutions"
-        ,   testCaseSteps "the last step in the sequence is a solution (via solve)" $ \step -> do
-                results <- getResults
-                forM_ results $ \(idx,r) ->
-                    when (null $ solve (last r)) $ do 
-                        step ("advanced grid #" <> show (idx :: Int))
-                        assertFailure "solve returns an empty list"
+            testCaseSteps "results are a valid sequence (via rotations)" $ 
+                \step -> getResults >>= \results -> 
+                -- do the following for every grid in the campaign
+                forM_ results $ \(idx,input,moves) -> 
+                -- pair moves with their previous state
+                forM_ (zip moves (input:moves)) $ \(move, previous) ->
+                -- check that the state follows from the previous one
+                unless (followsFrom move previous) $ do 
+                    step ("advanced grid #" <> show (idx :: Int))
+                    assertFailure $
+                        "\nA step in the sequence returned by `steps` for this grid:\n\n" <>
+                        showPretty move <> 
+                        "\n\ndoes not follow from the previous grid\n\n" <> 
+                        showPretty previous <>
+                        "\n\naccording to `rotations`."
+        ,   testCaseSteps "sequence does not contain repeated steps" $ 
+                \step -> getResults >>= \results ->
+                -- do the following for every grid in the campaign
+                forM_ results $ \(idx,_,r) -> 
+                -- check for duplicates
+                when (length r /= length (nub r)) $ do
+                    -- if we fail, calculate the actual duplicate steps
+                    let duplicates = [xs | xs <- subsequences r
+                                         , length xs > 1
+                                         , all (==head xs) xs]
+                    -- output information about the failure
+                    step ("advanced grid #" <> show (idx :: Int))
+                    assertFailure $ concat 
+                        [ "\nThere are repeated steps in the sequence for this grid:\n\n"
+                        , intercalate ", and\n\n" $ 
+                          map ((<> "\n\nappears multiple times") . showPretty . head) duplicates
+                        ]
+        ,   testCaseSteps "the last step in the sequence is a solution (via solve)" $ 
+                \step -> getResults >>= \results ->
+                -- do the following for every grid in the campaign
+                forM_ results $ \(idx,_,r) ->
+                -- check that there are solutions for the last step
+                when (null $ solve (last r)) $ do 
+                    step ("advanced grid #" <> show (idx :: Int))
+                    assertFailure $ 
+                        "\nThe last step returned by `steps` for this grid is\n\n" <>
+                        showPretty (last r) <>
+                        "\n\nbut it has no solutions according to `solve`!"
         ] 
 
 --------------------------------------------------------------------------------
@@ -812,7 +852,8 @@ tests = localOption (HedgehogShowReplay True)
         ,   rotateTests
         ,   after AllSucceed "Game.result" $
             after AllSucceed "Game.rotate" rotationsTests
-        ,   after AllSucceed "Game.rotations" stepsTests
+        ,   after AllSucceed "Game.solve" $
+            after AllSucceed "Game.rotations" stepsTests
         ]
 
 --------------------------------------------------------------------------------
