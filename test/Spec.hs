@@ -155,9 +155,9 @@ rowCount (MkGrid _ rs) = length rs
 -- equivalent. That is, equivalent except for the states of cells.
 structureEq :: Grid -> Grid -> Bool 
 structureEq (MkGrid cts rs) (MkGrid cts' rs') =
-    cts==cts' && all (uncurry testRow) (zip rs rs')
+    cts==cts' && length rs==length rs' && all (uncurry testRow) (zip rs rs')
     where testRow (MkRow t cs) (MkRow t' cs') = 
-            t==t' && all (uncurry testCell) (zip cs cs')
+            t==t' && length cs == length cs' && all (uncurry testCell) (zip cs cs')
           testCell (MkCell _ a) (MkCell _ a') = a==a'
 
 -- | `allActions` @rows@ returns a list of all `Action`s in @rows@.
@@ -544,8 +544,12 @@ prop_solve_rows = property $ do
     -- there should be at least one solution
     length solutions /== 0
 
-    -- check that the result of the rows are the corresponding row targets
-    forM_ solutions $ \(MkGrid _ rows) -> 
+    -- check every solution
+    forM_ solutions $ \solution@(MkGrid _ rows) -> do
+        -- check for structural equivalence with the input
+        diff solution structureEq input
+
+        -- check that the result of the rows are the corresponding row targets
         forM_ rows $ \(MkRow target cells) ->
             result cells === target
 
@@ -566,9 +570,13 @@ prop_solve_columns = property $ do
     -- there should be at least one solution
     length solutions /== 0
 
-    -- check that the result of the columns are the corresponding 
-    -- column targets
-    forM_ solutions $ \(MkGrid cts rows) -> do 
+    -- check every solution
+    forM_ solutions $ \solution@(MkGrid cts rows) -> do 
+        -- check for structural equivalence with the input
+        diff solution structureEq input
+
+        -- check that the result of the columns are the corresponding 
+        -- column targets
         let columns = zip cts (transpose $ map getCells rows)
         forM_ columns $ \(target, column) ->
             result column === target
