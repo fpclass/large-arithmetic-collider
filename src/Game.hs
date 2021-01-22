@@ -109,7 +109,7 @@ candidates = undefined
 -- | `solveRow` @row@ finds solutions for @row@. For example:
 --
 -- >>> solveRow (MkRow 5 [MkCell False (Add 5), MkCell False (Sub 1)])
--- [[MkCell True (Add 5), MkCell False (Sub 1)]]
+-- [ MkRow 5 [MkCell True (Add 5), MkCell False (Sub 1)]]
 --
 -- >>> solveRow (MkRow 5 [MkCell False (Add 5), MkCell False (Add 5)])
 -- [ MkRow 5 [MkCell True (Add 5), MkCell False (Add 5)] 
