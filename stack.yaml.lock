@@ -5,26 +5,19 @@
 
 packages:
 - completed:
-    hackage: hedgehog-1.0.3@sha256:dd9a25bf904fe444d5de471d0933261ef2c9a1110330460e037e0fef86fac89e,4622
-    pantry-tree:
-      size: 2621
-      sha256: 44224ad162df1653b211fde65c194e46de4c137780675ba7fa43fe4879f41a58
-  original:
-    hackage: hedgehog-1.0.3@sha256:dd9a25bf904fe444d5de471d0933261ef2c9a1110330460e037e0fef86fac89e,4622
-- completed:
     name: tasty-hedgehog
     version: 1.0.0.2
     git: https://github.com/mbg/tasty-hedgehog
     pantry-tree:
       size: 916
-      sha256: 55192af6022442573335d36a24af8dbf14d2c4b5e08ae666d446ad966bd4bbf8
-    commit: 03a00141e3cd8e3bf93f85d26e93649799c0d7b2
+      sha256: d709950962551976cc6fa41f53e3b9c11a6ad106e8f7dbbfe227daa765e89fed
+    commit: ceadcd78cf96ef2a0fb63d353aaa43f2e51b40a8
   original:
     git: https://github.com/mbg/tasty-hedgehog
-    commit: 03a00141e3cd8e3bf93f85d26e93649799c0d7b2
+    commit: ceadcd78cf96ef2a0fb63d353aaa43f2e51b40a8
 snapshots:
 - completed:
-    size: 533252
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/27.yaml
-    sha256: c2aaae52beeacf6a5727c1010f50e89d03869abfab6d2c2658ade9da8ed50c73
-  original: lts-16.27
+    size: 586106
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/20.yaml
+    sha256: 8699812d2b2c1f83d6ad1261de9cf628ed36a1cfc14f19d67188e005e7a3a39d
+  original: lts-18.20

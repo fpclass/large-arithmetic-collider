@@ -2,61 +2,70 @@ name: build
 
 on:
   push:
-    branches: [master]
+    branches:
+      - main
     paths:
-      - '.github/workflows/**'
-      - 'app/**'
-      - 'src/**'
-      - 'test/**'
-      - 'package.yaml'
-      - 'stack*.yaml'
+      - ".github/workflows/**"
+      - "app/**"
+      - "levels/**"
+      - "src/**"
+      - "test/**"
+      - "package.yaml"
+      - "stack*.yaml"
   pull_request:
-    branches: [master]
-  
+    branches:
+      - main
+
 jobs:
-    build:
-      strategy: 
-        matrix:
-          resolver: 
-            - stack
-  
-      runs-on: ubuntu-latest
-  
-      steps:
-      - uses: actions/checkout@v1  
-          
-      - name: Install the Haskell Stack 
-        run: |
-          mkdir -p ~/.local/bin
-          curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  build:
+    strategy:
+      matrix:
+        resolver:
+          - stack
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Haskell
+        id: "install-haskell"
+        uses: haskell/actions/setup@v1
+        with:
+          ghc-version: "8.10.7"
+          enable-stack: true
+          stack-version: "latest"
 
       - name: Cache .stack
         id: cache-stack
         uses: actions/cache@v2
         with:
-          path: ~/.stack
+          path: ${{ steps.install-haskell.outputs.stack-root }}
           key: ${{ runner.os }}-${{ matrix.resolver }}-${{ hashFiles(format('{0}.yaml', matrix.resolver)) }}
           restore-keys: |
-              ${{ runner.os }}-stack
-              ${{ runner.os }}
-
-      - name: Install GHC 
-        run: |
-          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal --install-ghc setup
+            ${{ runner.os }}-${{ matrix.resolver }}-
+            ${{ runner.os }}-
 
       - name: Install dependencies
         run: |
-          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --only-dependencies --fast --test
-          
+          stack --system-ghc --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --only-dependencies --fast --test --haddock
+
       - name: Build
         id: build
         run: |
-          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test --no-run-tests
+          stack --system-ghc --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test --no-run-tests --haddock
 
-      ### uncomment the following lines in order to run the tests every time you
-      ### push to your repository
+      - name: Deploy documentation
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: JamesIves/github-pages-deploy-action@v4.2.2
+        with:
+          branch: haddock
+          folder: docs
 
-      # - name: Test 
-      #   id: test
-      #   run: |
-      #     stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test
+    ### uncomment the following lines in order to run the tests every time you
+    ### push to your repository
+
+    # - name: Test
+    #   id: test
+    #   run: |
+    #     stack --system-ghc --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test

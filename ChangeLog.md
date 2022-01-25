@@ -1,5 +1,5 @@
 # Changelog for Large Arithmetic Collider
 
-## 16 July 2019
+## 2022.0.0.0
 
-* First coursework beta
+* First general release

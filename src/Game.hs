@@ -1,17 +1,21 @@
 --------------------------------------------------------------------------------
--- Functional Programming (CS141)                                             --
--- Coursework 1: Large Arithmetic Collider                                    --
+-- Functional Programming - Large Arithmetic Collider Project
+--------------------------------------------------------------------------------
+-- Copyright (c) 2022 Michael B. Gale (michael@fpclass.online)
+--
+-- This source code is subject to the terms and conditions found in the LICENSE
+-- file in the root directory of this source tree.
 --------------------------------------------------------------------------------
 
-module Game where 
+module Game where
 
 --------------------------------------------------------------------------------
 
--- | Represents different actions (including their parameters) that a cell can 
+-- | Represents different actions (including their parameters) that a cell can
 -- have on a row or column total.
-data Action 
-    = Add Int 
-    | Sub Int 
+data Action
+    = Add Int
+    | Sub Int
     deriving (Eq, Ord, Show)
 
 -- | Represents a cell including whether it is enabled and its action.
@@ -32,7 +36,7 @@ data Direction = L | R
 
 --------------------------------------------------------------------------------
 
--- | `eval` @action total@ applies @action@ to the running @total@. 
+-- | `eval` @action total@ applies @action@ to the running @total@.
 -- For example:
 --
 -- >>> eval (Add 5) 3
@@ -44,10 +48,10 @@ data Direction = L | R
 ---------------------------------------
 -- [Add your explanation of how your implementation works here]
 ---------------------------------------
-eval :: Action -> Int -> Int 
+eval :: Action -> Int -> Int
 eval = undefined
 
--- | `apply` @cell total@ applies the action of @cell@ to the running @total@ 
+-- | `apply` @cell total@ applies the action of @cell@ to the running @total@
 -- if @cell@ is enabled. For example:
 --
 -- >>> apply (MkCell True (Add 5)) 3
@@ -59,10 +63,10 @@ eval = undefined
 ---------------------------------------
 -- [Add your explanation of how your implementation works here]
 ---------------------------------------
-apply :: Cell -> Int -> Int 
+apply :: Cell -> Int -> Int
 apply = undefined
 
--- | `result` @cells@ calculates the total produced by the actions of all 
+-- | `result` @cells@ calculates the total produced by the actions of all
 -- enabled cells in @cells@ starting from 0. For example:
 --
 -- >>> result []
@@ -74,8 +78,8 @@ apply = undefined
 ---------------------------------------
 -- [Add your explanation of how your implementation works here]
 ---------------------------------------
-result :: [Cell] -> Int 
-result = undefined 
+result :: [Cell] -> Int
+result = undefined
 
 -- | `states` @cell@ is a function which returns a list with _exactly_ two
 -- elements that represent the two different states @cell@ can be in. For
@@ -92,7 +96,7 @@ states = undefined
 
 -- | `candidates` @cells@ is a function which, given a list of cells in a row,
 -- produces all possible combinations of states for those cells. For example:
--- 
+--
 -- >>> candidates [MkCell False (Add 5), MkCell False (Sub 1)]
 -- [ [MkCell False (Add 5), MkCell False (Sub 1)]
 -- , [MkCell False (Add 5), MkCell True (Sub 1)]
@@ -112,7 +116,7 @@ candidates = undefined
 -- [ MkRow 5 [MkCell True (Add 5), MkCell False (Sub 1)]]
 --
 -- >>> solveRow (MkRow 5 [MkCell False (Add 5), MkCell False (Add 5)])
--- [ MkRow 5 [MkCell True (Add 5), MkCell False (Add 5)] 
+-- [ MkRow 5 [MkCell True (Add 5), MkCell False (Add 5)]
 -- , MkRow 5 [MkCell False (Add 5), MkCell True (Add 5)]
 -- ]
 --
@@ -159,8 +163,8 @@ solve = undefined
 rotate :: Direction -> [a] -> [a]
 rotate = undefined
 
--- | `rotations` @grid@ returns a list of grids containing all possible ways 
--- to rotate @grid@. This means the resulting list should normally have 
+-- | `rotations` @grid@ returns a list of grids containing all possible ways
+-- to rotate @grid@. This means the resulting list should normally have
 -- rows + columns many elements. For example:
 --
 -- >>> let row0 = MkRow 3 [MkCell False (Add 3), MkCell False (Add 5)]
@@ -186,8 +190,8 @@ rotate = undefined
 rotations :: Grid -> [Grid]
 rotations = undefined
 
--- | `steps` @grid@ finds the sequence of rotations that lead to a solution 
--- for @grid@ in the fewest number of rotations. The resulting list includes 
+-- | `steps` @grid@ finds the sequence of rotations that lead to a solution
+-- for @grid@ in the fewest number of rotations. The resulting list includes
 -- the solution as the last element. You may assume that this function will
 -- never be called on a @grid@ for which there are solutions returned by
 -- `solve`. The states of intermediate grids in the resulting list
@@ -196,12 +200,12 @@ rotations = undefined
 -- >>> let row0 = MkRow 3 [MkCell False (Add 2), MkCell False (Add 3)]
 -- >>> let row1 = MkRow 4 [MkCell False (Add 5), MkCell False (Add 2)]
 -- >>> steps (MkGrid [5, 2] [row0, row1])
--- [ MkGrid [5, 2] [ MkRow 3 [ MkCell False (Add 5), MkCell False (Add 3)] 
+-- [ MkGrid [5, 2] [ MkRow 3 [ MkCell False (Add 5), MkCell False (Add 3)]
 --                 , MkRow 4 [ MkCell False (Add 2), MkCell False (Add 2)]
---                 ]  
--- , MkGrid [5, 2] [ MkRow 3 [ MkCell True (Add 3), MkCell False (Add 5)] 
+--                 ]
+-- , MkGrid [5, 2] [ MkRow 3 [ MkCell True (Add 3), MkCell False (Add 5)]
 --                 , MkRow 4 [ MkCell True (Add 2), MkCell True (Add 2)]
---                 ] 
+--                 ]
 -- ]
 --
 ---------------------------------------

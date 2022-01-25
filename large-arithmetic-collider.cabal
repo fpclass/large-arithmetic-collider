@@ -1,20 +1,20 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.5.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a6a10eb6ed72ff805faadc32cbbbf4dbfebed5247c1159f864c9df18406cf602
+-- hash: 706a99e4120baeef18e42b0828731c23d65a7016eec74bb92920a647265033f9
 
 name:           large-arithmetic-collider
-version:        0.2.0.0
+version:        2022.0.0.0
 description:    Please see the README on GitHub at <https://github.com/fpclass/large-arithmetic-collider#readme>
 homepage:       https://github.com/fpclass/large-arithmetic-collider#readme
 bug-reports:    https://github.com/fpclass/large-arithmetic-collider/issues
 author:         Michael B. Gale
-maintainer:     m.gale@warwick.ac.uk
-copyright:      2020 Michael B. Gale
-license:        MIT
+maintainer:     michael@fpclass.online
+copyright:      Copyright 2022 Michael B. Gale
+license:        OtherLicense
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
